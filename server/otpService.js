@@ -239,10 +239,14 @@ class OtpService {
               if (parsed.return === true || (res.statusCode >= 200 && res.statusCode < 300 && !parsed.status_code)) {
                 resolve(parsed);
               } else {
-                const errorMsg = Array.isArray(parsed.message) 
+                let errorMsg = Array.isArray(parsed.message) 
                   ? parsed.message.join(', ') 
                   : (parsed.message || `Fast2SMS error code ${parsed.status_code || res.statusCode}`);
-                reject(new Error(`Fast2SMS rejected request: ${errorMsg}`));
+                
+                if (errorMsg.includes('complete website verification')) {
+                  errorMsg += " (Action required: Log in to fast2sms.com -> OTP SMS menu -> Complete Aadhaar/Website verification to activate live SMS OTP routing).";
+                }
+                reject(new Error(errorMsg));
               }
             } catch (err) {
               if (res.statusCode >= 200 && res.statusCode < 300) {

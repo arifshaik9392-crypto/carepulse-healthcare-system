@@ -111,6 +111,18 @@
       "age": 33,
       "active": true,
       "createdAt": "2026-10-22T15:51:21.677Z"
+    },
+    {
+      "id": "usr_pat_1792684465329",
+      "name": "Shaik Arif",
+      "email": "arifshaik9392@gmail.com",
+      "phone": "",
+      "passwordHash": "$2b$10$Sx1t//A4aDYUgFA.Fyg76OXrxcVvW7AoC.tHpiBTaYfIU15A0dwjq",
+      "role": "Patient",
+      "gender": "Male",
+      "age": 19,
+      "active": true,
+      "createdAt": "2026-10-22T15:54:25.329Z"
     }
   ],
   "doctors": [
@@ -414,6 +426,33 @@
     }
   ],
   "auditLogs": [
+    {
+      "id": "log_1792693694195_228",
+      "actorId": "usr_pat_1792684465329",
+      "actorName": "Shaik Arif",
+      "actorRole": "Patient",
+      "action": "OTP_REQUEST_DISPATCHED",
+      "details": "Real OTP dispatched via Email for Patient login.",
+      "timestamp": "2026-10-22T18:28:14.195Z"
+    },
+    {
+      "id": "log_1792693389110_383",
+      "actorId": "usr_pat_1792684465329",
+      "actorName": "Shaik Arif",
+      "actorRole": "Patient",
+      "action": "OTP_REQUEST_DISPATCHED",
+      "details": "Real OTP dispatched via Email for Patient login.",
+      "timestamp": "2026-10-22T18:23:09.110Z"
+    },
+    {
+      "id": "log_1792684465333_485",
+      "actorId": "usr_pat_1792684465329",
+      "actorName": "Shaik Arif",
+      "actorRole": "Patient",
+      "action": "PATIENT_SELF_REGISTER",
+      "details": "New patient registered: Shaik Arif",
+      "timestamp": "2026-10-22T15:54:25.333Z"
+    },
     {
       "id": "log_1792684281875_845",
       "actorId": "usr_pat_1792684281676",
