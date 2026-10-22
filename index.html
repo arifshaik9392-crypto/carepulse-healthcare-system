@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CarePulse — Real-Time Insights. Better Care.</title>
+
+  <!-- Tailwind CSS CDN with CarePulse Healthcare Palette -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            royal: {
+              50: '#eef6ff',
+              100: '#d9eaff',
+              500: '#0264db',
+              600: '#014BAA', // Primary Royal Blue
+              700: '#013b86',
+              800: '#012e69',
+              900: '#012351'
+            },
+            cream: {
+              50: '#fdfcfb',
+              100: '#F8F3F0', // Main Background Light Cream
+              200: '#f1e7e1',
+              300: '#e7d8cf'
+            },
+            medical: {
+              emerald: '#059669',
+              amber: '#d97706',
+              crimson: '#dc2626'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons & Chart.js -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Translations Data -->
+  <script src="translations.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+    
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #F8F3F0;
+    }
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1e7e1;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-cream-100 text-slate-800 min-h-screen flex flex-col antialiased selection:bg-royal-600 selection:text-white">
+
+  <!-- ========================================== -->
+  <!-- TOP NAVIGATION HEADER                       -->
+  <!-- ========================================== -->
+  <header class="bg-white border-b border-cream-300 sticky top-0 z-40 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-20">
+        
+        <!-- Brand & Tagline -->
+        <div class="flex items-center space-x-3 sm:space-x-4">
+          <div class="flex items-center justify-center w-12 h-12 rounded-2xl bg-royal-600 shadow-md shadow-royal-600/30 text-white">
+            <i data-lucide="activity" class="w-7 h-7 animate-pulse text-white"></i>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-2xl font-black tracking-tight text-royal-600" data-i18n="brandName">CarePulse</span>
+              <span id="roleBadge" class="hidden text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-royal-100 text-royal-700 border border-royal-200">Patient</span>
+            </div>
+            <p class="text-xs text-slate-500 font-medium tracking-wide" data-i18n="tagline">Real-Time Insights. Better Care.</p>
+          </div>
+        </div>
+
+        <!-- Top Controls: Clock, 6-Lang Selector, Auth Controls -->
+        <div class="flex items-center space-x-3">
+          
+          <!-- Live Clock -->
+          <div class="hidden md:flex flex-col items-end px-3 py-1 bg-cream-50 rounded-lg border border-cream-300 font-mono-code">
+            <span id="digitalClock" class="text-xs font-bold text-slate-800">12:00:00 PM</span>
+            <span id="digitalDate" class="text-[10px] text-slate-500 font-sans">Thursday, 22 Oct 2026</span>
+          </div>
+
+          <!-- 6-Language Dropdown -->
+          <div class="flex items-center bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm">
+            <i data-lucide="languages" class="w-4 h-4 mr-1 text-royal-600"></i>
+            <select id="langSelector" onchange="CarePulseApp.changeLanguage(this.value)" class="bg-transparent border-none text-slate-700 focus:outline-none cursor-pointer pr-1 font-semibold">
+              <option value="en">English (EN)</option>
+              <option value="te">తెలుగు (TE)</option>
+              <option value="hi">हिंदी (HI)</option>
+              <option value="ta">தமிழ் (TA)</option>
+              <option value="kn">ಕನ್ನಡ (KN)</option>
+              <option value="ml">മലയാളം (ML)</option>
+            </select>
+          </div>
+
+          <!-- User Info / Logout Button -->
+          <div id="authHeaderBlock" class="flex items-center gap-2">
+            <!-- Rendered by app.js -->
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Navigation Tabs (Rendered per Role dynamically) -->
+      <nav id="roleNavContainer" class="hidden border-t border-cream-200 pt-1 pb-2 overflow-x-auto custom-scrollbar flex space-x-1 sm:space-x-2 text-xs font-semibold">
+        <!-- Rendered by app.js -->
+      </nav>
+
+    </div>
+  </header>
+
+  <!-- ========================================== -->
+  <!-- MAIN APPLICATION BODY CONTAINER            -->
+  <!-- ========================================== -->
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- ============================================================= -->
+    <!-- 1. AUTHENTICATION EXPERIENCE (3 SEPARATE ROLES & REAL OTP)   -->
+    <!-- ============================================================= -->
+    <section id="authView" class="block max-w-xl mx-auto py-8">
+      
+      <!-- Role Selector Tabs -->
+      <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-cream-300">
+        
+        <div class="text-center mb-6">
+          <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-royal-50 border border-royal-100 text-royal-600 mb-3 shadow-inner">
+            <i data-lucide="shield-check" class="w-8 h-8 text-royal-600"></i>
+          </div>
+          <h2 class="text-xl font-black text-slate-900" data-i18n="selectRolePrompt">Select Your Access Role</h2>
+          <p class="text-xs text-slate-500 mt-1">Enterprise Role-Enforced Secure OTP Authentication</p>
+        </div>
+
+        <!-- 3 Specific Role Cards -->
+        <div class="grid grid-cols-3 gap-2.5 mb-6">
+          <button type="button" onclick="CarePulseApp.selectAuthRole('Patient')" id="roleBtn-Patient" class="role-select-btn p-3 rounded-2xl border-2 border-royal-600 bg-royal-50 text-royal-700 flex flex-col items-center justify-center transition shadow-sm">
+            <i data-lucide="user" class="w-5 h-5 mb-1 text-royal-600"></i>
+            <span class="text-xs font-bold" data-i18n="patientRole">Patient</span>
+            <span class="text-[9px] text-slate-500 mt-0.5">Self-Register</span>
+          </button>
+
+          <button type="button" onclick="CarePulseApp.selectAuthRole('Staff')" id="roleBtn-Staff" class="role-select-btn p-3 rounded-2xl border border-slate-200 bg-white text-slate-600 hover:border-slate-300 flex flex-col items-center justify-center transition">
+            <i data-lucide="sliders" class="w-5 h-5 mb-1 text-slate-500"></i>
+            <span class="text-xs font-bold" data-i18n="staffRole">Staff</span>
+            <span class="text-[9px] text-slate-500 mt-0.5">Authorized</span>
+          </button>
+
+          <button type="button" onclick="CarePulseApp.selectAuthRole('Doctor')" id="roleBtn-Doctor" class="role-select-btn p-3 rounded-2xl border border-slate-200 bg-white text-slate-600 hover:border-slate-300 flex flex-col items-center justify-center transition">
+            <i data-lucide="stethoscope" class="w-5 h-5 mb-1 text-slate-500"></i>
+            <span class="text-xs font-bold" data-i18n="doctorRole">Doctor</span>
+            <span class="text-[9px] text-slate-500 mt-0.5">Clinical Suite</span>
+          </button>
+        </div>
+
+        <!-- Error Alert Banner -->
+        <div id="authErrorBanner" class="hidden"></div>
+
+        <!-- Step 1: Identifier Entry -->
+        <div id="authStep1" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5" data-i18n="emailOrPhone">
+              Email Address or 10-Digit Mobile Number
+            </label>
+            <div class="relative">
+              <i data-lucide="mail" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5"></i>
+              <input type="text" id="authIdentifier" placeholder="e.g. 9123456789 or name@example.com" class="w-full bg-cream-50 border border-slate-300 rounded-xl pl-10 pr-3 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-royal-600 focus:ring-2 focus:ring-royal-100 transition" />
+            </div>
+            <p class="text-[11px] text-slate-500 mt-1">Real OTP verification via verified email or mobile SMS provider.</p>
+          </div>
+
+          <!-- Patient Self-Registration Details (Appears only for Patient if new) -->
+          <div id="patientRegFields" class="space-y-3 pt-2 border-t border-slate-100">
+            <span class="text-xs font-bold text-royal-600 block uppercase tracking-wider">Patient Profile Details</span>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] font-bold text-slate-600 mb-1" data-i18n="fullName">Full Name</label>
+                <input type="text" id="regPatientName" placeholder="e.g. Ramesh Chandra" class="w-full bg-cream-50 border border-slate-300 rounded-lg px-3 py-2 text-xs" />
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-[11px] font-bold text-slate-600 mb-1" data-i18n="age">Age</label>
+                  <input type="number" id="regPatientAge" min="1" max="120" value="35" class="w-full bg-cream-50 border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono-code" />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-slate-600 mb-1" data-i18n="gender">Gender</label>
+                  <select id="regPatientGender" class="w-full bg-cream-50 border border-slate-300 rounded-lg px-2 py-2 text-xs">
+                    <option value="Male" data-i18n="male">Male</option>
+                    <option value="Female" data-i18n="female">Female</option>
+                    <option value="Transgender" data-i18n="transgender">Transgender</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Provisioned Credentials Quick Helper (For Testing) -->
+          <div class="bg-royal-50/70 border border-royal-200/80 rounded-xl p-3 text-[11px] text-slate-600 space-y-1">
+            <strong class="text-royal-700 block font-bold">Authorized Test Accounts (Provisioned in DB):</strong>
+            <p>&bull; <strong>Doctor:</strong> dr.sharma@carepulse.org or 9876543210</p>
+            <p>&bull; <strong>Staff:</strong> staff@carepulse.org or 9888877777</p>
+            <p>&bull; <strong>Patient:</strong> patient@carepulse.org or 9123456789 (or enter any new number to self-register)</p>
+          </div>
+
+          <button type="button" onclick="CarePulseApp.requestOtp()" id="btnRequestOtp" class="w-full py-3.5 bg-royal-600 hover:bg-royal-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-royal-600/25 flex items-center justify-center gap-2 transition active:scale-98">
+            <i data-lucide="key" class="w-4 h-4"></i> <span data-i18n="requestOtp">Send Secure OTP</span>
+          </button>
+        </div>
+
+        <!-- Step 2: OTP Verification -->
+        <div id="authStep2" class="space-y-4 hidden">
+          <div class="bg-royal-50 border border-royal-200 rounded-xl p-3 flex items-center justify-between text-xs">
+            <div>
+              <span class="text-slate-500 block">OTP Dispatched to:</span>
+              <strong id="otpTargetDisplay" class="font-mono-code text-royal-700 text-sm">9123456789</strong>
+            </div>
+            <button onclick="CarePulseApp.backToStep1()" class="text-xs text-royal-600 hover:underline font-semibold">Change</button>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5" data-i18n="enterOtp">
+              Enter 6-Digit OTP
+            </label>
+            <input type="text" id="authOtpCode" maxlength="6" placeholder="&bull; &bull; &bull; &bull; &bull; &bull;" class="w-full text-center tracking-widest text-2xl font-mono-code bg-cream-50 border border-slate-300 rounded-xl py-3 text-slate-900 focus:outline-none focus:border-royal-600 focus:ring-2 focus:ring-royal-100" />
+            <div class="flex items-center justify-between mt-1 text-[11px] text-slate-500">
+              <span id="otpTimerDisplay">Expires in: 5m 00s</span>
+              <button type="button" id="btnResendOtp" onclick="CarePulseApp.requestOtp()" class="text-royal-600 font-bold hover:underline" data-i18n="resendOtp">Resend OTP</button>
+            </div>
+          </div>
+
+          <button type="button" onclick="CarePulseApp.verifyOtp()" id="btnVerifyOtp" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition active:scale-98">
+            <i data-lucide="check-circle" class="w-4 h-4"></i> <span data-i18n="verifyOtp">Verify & Enter</span>
+          </button>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- 2. PATIENT DASHBOARD EXPERIENCE                              -->
+    <!-- ============================================================= -->
+    <section id="patientDashboardView" class="hidden space-y-6">
+      
+      <!-- Patient Welcome & Active Token Banner -->
+      <div class="bg-white rounded-3xl p-6 shadow-sm border border-cream-300 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-royal-600">Patient Self-Service Console</span>
+          <h2 class="text-2xl font-black text-slate-900 mt-0.5">Welcome, <span id="patProfileName">Suresh Chandra</span></h2>
+          <p class="text-xs text-slate-500">Track active OPD queues, book appointment slots, and manage pharmacy handoffs</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <button onclick="CarePulseApp.openAppointmentModal()" class="px-4 py-2.5 rounded-xl bg-royal-600 hover:bg-royal-700 text-white text-xs font-bold shadow-md shadow-royal-600/20 flex items-center gap-1.5 transition">
+            <i data-lucide="calendar" class="w-4 h-4"></i> <span data-i18n="bookAppointment">Book Appointment</span>
+          </button>
+          <button onclick="CarePulseApp.openWalkInModal()" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center gap-1.5 transition">
+            <i data-lucide="ticket" class="w-4 h-4"></i> <span data-i18n="walkInCheckIn">OPD Check-In</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Active OPD Token Showcase Card -->
+      <div id="patientActiveTokenCard" class="bg-white rounded-3xl p-6 shadow-md border-2 border-royal-600/20 relative overflow-hidden">
+        <!-- Rendered by app.js -->
+      </div>
+
+      <!-- Outpero AI Voice Call Status Banner -->
+      <div class="bg-gradient-to-r from-royal-50 via-white to-royal-50 border border-royal-200 rounded-2xl p-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-royal-600 text-white flex items-center justify-center">
+            <i data-lucide="phone-call" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h4 class="text-xs font-bold uppercase tracking-wider text-royal-700" data-i18n="outperoCallStatus">Outpero AI Voice Alert</h4>
+            <p class="text-xs text-slate-600">Automated outbound phone calls trigger directly to your mobile when your queue position is &le; 3.</p>
+          </div>
+        </div>
+        <span id="patientOutperoStatusBadge" class="text-xs font-mono-code font-bold bg-cream-200 text-slate-700 px-3 py-1 rounded-full">Idle</span>
+      </div>
+
+      <!-- Appointment History & Pharmacy Status Tabs -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Booking & Appointment History -->
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-cream-300">
+          <div class="flex items-center justify-between border-b border-cream-200 pb-3 mb-4">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2">
+              <i data-lucide="calendar-check" class="w-4 h-4 text-royal-600"></i> My Appointments
+            </h3>
+            <span id="patApptCountBadge" class="text-xs font-mono-code bg-cream-100 text-slate-600 px-2 py-0.5 rounded">0 Bookings</span>
+          </div>
+          <div id="patientApptsList" class="space-y-3 max-h-72 overflow-y-auto custom-scrollbar">
+            <!-- Rendered by app.js -->
+          </div>
+        </div>
+
+        <!-- Pharmacy Orders for Patient -->
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-cream-300">
+          <div class="flex items-center justify-between border-b border-cream-200 pb-3 mb-4">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2">
+              <i data-lucide="pill" class="w-4 h-4 text-emerald-600"></i> My Pharmacy Dispensing Status
+            </h3>
+            <span id="patPharmacyCountBadge" class="text-xs font-mono-code bg-cream-100 text-slate-600 px-2 py-0.5 rounded">0 Orders</span>
+          </div>
+          <div id="patientPharmacyList" class="space-y-3 max-h-72 overflow-y-auto custom-scrollbar">
+            <!-- Rendered by app.js -->
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- 3. STAFF DASHBOARD EXPERIENCE (9 SECTIONS)                   -->
+    <!-- ============================================================= -->
+    <section id="staffDashboardView" class="hidden space-y-6">
+      
+      <!-- Staff Navigation Bar with 9 Specific Sections -->
+      <div class="bg-white rounded-2xl p-2 shadow-sm border border-cream-300 flex space-x-1 overflow-x-auto custom-scrollbar text-xs font-bold">
+        <button onclick="CarePulseApp.switchStaffSubTab('overview')" id="staffTab-overview" class="staff-subtab-btn px-3 py-2 rounded-xl bg-royal-600 text-white flex items-center gap-1.5 shadow-sm">
+          <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i> <span data-i18n="navOverview">Overview</span>
+        </button>
+        <button onclick="CarePulseApp.switchStaffSubTab('queue')" id="staffTab-queue" class="staff-subtab-btn px-3 py-2 rounded-xl text-slate-600 hover:bg-cream-100 flex items-center gap-1.5 transition">
+          <i data-lucide="users" class="w-3.5 h-3.5"></i> <span data-i18n="navQueue">OPD & Queue</span>
+        </button>
+        <button onclick="CarePulseApp.switchStaffSubTab('appointments')" id="staffTab-appointments" class="staff-subtab-btn px-3 py-2 rounded-xl text-slate-600 hover:bg-cream-100 flex items-center gap-1.5 transition">
+          <i data-lucide="calendar" class="w-3.5 h-3.5"></i> <span data-i18n="navAppointments">Appointments</span>
+        </button>
+        <button onclick="CarePulseApp.switchStaffSubTab('pharmacy')" id="staffTab-pharmacy" class="staff-subtab-btn px-3 py-2 rounded-xl text-slate-600 hover:bg-cream-100 flex items-center gap-1.5 transition">
+          <i data-lucide="pill" class="w-3.5 h-3.5"></i> <span data-i18n="navPharmacy">Pharmacy</span>
+        </button>
+        <button onclick="CarePulseApp.switchStaffSubTab('bloodbank')" id="staffTab-bloodbank" class="staff-subtab-btn px-3 py-2 rounded-xl text-slate-600 hover:bg-cream-100 flex items-center gap-1.5 transition">
+          <i data-lucide="droplet" class="w-3.5 h-3.5 text-medical-crimson"></i> <span data-i18n="navBloodBank">Blood Bank</span>
+        </button>
+        <button onclick="CarePulseApp.switchStaffSubTab('doctors')" id="staffTab-doctors" class="staff-subtab-btn px-3 py-2 rounded-xl text-slate-600 hover:bg-cream-100 flex items-center gap-1.5 transition">
+          <i data-lucide="stethoscope" class="w-3.5 h-3.5"></i> <span data-i18n="navDoctors">Doctors & Availability</span>
+        </button>
+        <button onclick="CarePulseApp.switchStaffSubTab('reports')" id="staffTab-reports" class="staff-subtab-btn px-3 py-2 rounded-xl text-slate-600 hover:bg-cream-100 flex items-center gap-1.5 transition">
+          <i data-lucide="bar-chart-3" class="w-3.5 h-3.5"></i> <span data-i18n="navReports">Reports & Analysis</span>
+        </button>
+        <button onclick="CarePulseApp.switchStaffSubTab('notifications')" id="staffTab-notifications" class="staff-subtab-btn px-3 py-2 rounded-xl text-slate-600 hover:bg-cream-100 flex items-center gap-1.5 transition">
+          <i data-lucide="bell" class="w-3.5 h-3.5"></i> <span data-i18n="navNotifications">Notifications</span>
+        </button>
+        <button onclick="CarePulseApp.switchStaffSubTab('settings')" id="staffTab-settings" class="staff-subtab-btn px-3 py-2 rounded-xl text-slate-600 hover:bg-cream-100 flex items-center gap-1.5 transition">
+          <i data-lucide="settings" class="w-3.5 h-3.5"></i> <span data-i18n="navSettings">Settings</span>
+        </button>
+      </div>
+
+      <!-- Subtab Container -->
+      <div id="staffSubTabContent" class="space-y-6">
+        <!-- Rendered dynamically by app.js -->
+      </div>
+
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- 4. DOCTOR DASHBOARD EXPERIENCE                               -->
+    <!-- ============================================================= -->
+    <section id="doctorDashboardView" class="hidden space-y-6">
+      
+      <!-- Doctor Header with Availability Control & Status -->
+      <div class="bg-white rounded-3xl p-6 shadow-sm border border-cream-300 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-royal-600">Consultation Suite Control</span>
+          <h2 class="text-2xl font-black text-slate-900 mt-0.5" id="docProfileName">Dr. A. Sharma</h2>
+          <p class="text-xs text-slate-500 font-medium" id="docProfileSpeciality">General Medicine &bull; Room 101 (OPD Block A)</p>
+        </div>
+        
+        <!-- Doctor Availability & Pause Controls -->
+        <div class="flex items-center gap-3">
+          <select id="docAvailabilitySelect" onchange="CarePulseApp.updateDoctorAvailability(this.value)" class="bg-cream-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-700">
+            <option value="Available">Available (Accepting)</option>
+            <option value="In Consultation">In Consultation</option>
+            <option value="On Break">On Break</option>
+            <option value="Offline">Offline</option>
+          </select>
+
+          <button id="btnToggleQueuePause" onclick="CarePulseApp.toggleDoctorQueuePause()" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold flex items-center gap-1.5 transition">
+            <i data-lucide="pause" class="w-3.5 h-3.5"></i> <span>Pause Queue</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Doctor Live Consultation Workspace -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Active Patient in Consultation (Col 7) -->
+        <div class="lg:col-span-7 bg-white rounded-3xl p-6 shadow-md border border-cream-300 flex flex-col justify-between" id="docActiveConsultationBox">
+          <!-- Rendered by app.js -->
+        </div>
+
+        <!-- Assigned Patient Queue (Col 5) -->
+        <div class="lg:col-span-5 bg-white rounded-3xl p-6 shadow-sm border border-cream-300">
+          <div class="flex items-center justify-between border-b border-cream-200 pb-3 mb-4">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+              <i data-lucide="list-ordered" class="w-4 h-4 text-royal-600"></i> Assigned Queue List
+            </h3>
+            <span id="docQueueCountBadge" class="text-xs font-mono-code font-bold bg-royal-50 text-royal-700 px-2.5 py-0.5 rounded-full">0 Waiting</span>
+          </div>
+
+          <div id="docAssignedQueueList" class="space-y-3 max-h-[380px] overflow-y-auto custom-scrollbar">
+            <!-- Rendered by app.js -->
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- 5. PUBLIC TV LIVE QUEUE DISPLAY                               -->
+    <!-- ============================================================= -->
+    <section id="publicTvView" class="hidden space-y-6">
+      <!-- Live Readout Showcase -->
+      <div class="bg-white rounded-3xl p-8 shadow-xl border border-cream-300 text-center relative overflow-hidden" id="tvShowcaseContainer">
+        <!-- Rendered by app.js -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- MODALS CONTAINER                           -->
+  <!-- ========================================== -->
+
+  <!-- Book Appointment Modal (26 Specialities, Real DB Doctors Only) -->
+  <div id="appointmentModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl border border-cream-300 max-w-lg w-full p-6 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-cream-200 pb-3 mb-4">
+        <h3 class="text-base font-black text-slate-900 flex items-center gap-2">
+          <i data-lucide="calendar" class="w-5 h-5 text-royal-600"></i> Book OPD Appointment
+        </h3>
+        <button onclick="CarePulseApp.closeModal('appointmentModal')" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form onsubmit="CarePulseApp.handleBookAppointment(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1" data-i18n="selectSpeciality">Doctor Speciality *</label>
+          <select id="aptSpeciality" onchange="CarePulseApp.loadDoctorsForSpeciality(this.value, 'aptDoctor')" required class="w-full bg-cream-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-royal-600">
+            <!-- Populated with 26 specialities -->
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1" data-i18n="selectDoctor">Select Doctor *</label>
+          <select id="aptDoctor" required class="w-full bg-cream-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-royal-600">
+            <!-- Populated dynamically with real DB doctors -->
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Appointment Date *</label>
+            <input type="date" id="aptDate" required class="w-full bg-cream-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono-code" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Available Slot *</label>
+            <select id="aptSlot" required class="w-full bg-cream-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono-code">
+              <option value="09:00 AM - 09:30 AM">09:00 AM - 09:30 AM</option>
+              <option value="10:00 AM - 10:30 AM">10:00 AM - 10:30 AM</option>
+              <option value="11:30 AM - 12:00 PM">11:30 AM - 12:00 PM</option>
+              <option value="02:00 PM - 02:30 PM">02:00 PM - 02:30 PM</option>
+              <option value="03:30 PM - 04:00 PM">03:30 PM - 04:00 PM</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Patient Symptoms / Notes</label>
+          <textarea id="aptNotes" rows="2" placeholder="e.g. Follow-up consultation or chronic cough" class="w-full bg-cream-50 border border-slate-300 rounded-xl p-2.5 text-xs"></textarea>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-2">
+          <button type="button" onclick="CarePulseApp.closeModal('appointmentModal')" class="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-cream-100 rounded-xl">Cancel</button>
+          <button type="submit" class="px-5 py-2.5 bg-royal-600 hover:bg-royal-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md transition">Confirm Appointment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Walk-In OPD Token Registration Modal -->
+  <div id="walkInModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl border border-cream-300 max-w-lg w-full p-6 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-cream-200 pb-3 mb-4">
+        <h3 class="text-base font-black text-slate-900 flex items-center gap-2">
+          <i data-lucide="ticket" class="w-5 h-5 text-emerald-600"></i> OPD Token Registration
+        </h3>
+        <button onclick="CarePulseApp.closeModal('walkInModal')" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form onsubmit="CarePulseApp.handleWalkInRegistration(event)" class="space-y-4">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1" data-i18n="fullName">Patient Name *</label>
+            <input type="text" id="wiName" required placeholder="Full Name" class="w-full bg-cream-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Mobile Number *</label>
+            <input type="tel" id="wiPhone" required pattern="[6-9][0-9]{9}" maxlength="10" placeholder="10-digit Mobile" class="w-full bg-cream-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono-code" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1" data-i18n="age">Age *</label>
+            <input type="number" id="wiAge" min="1" max="120" required value="40" class="w-full bg-cream-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono-code" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1" data-i18n="gender">Gender *</label>
+            <!-- Exactly Male, Female, Transgender -->
+            <select id="wiGender" required class="w-full bg-cream-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold">
+              <option value="Male" data-i18n="male">Male</option>
+              <option value="Female" data-i18n="female">Female</option>
+              <option value="Transgender" data-i18n="transgender">Transgender</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1" data-i18n="selectSpeciality">Speciality *</label>
+          <select id="wiSpeciality" onchange="CarePulseApp.loadDoctorsForSpeciality(this.value, 'wiDoctor')" required class="w-full bg-cream-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold">
+            <!-- 26 specialities -->
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1" data-i18n="selectDoctor">Consulting Doctor *</label>
+          <select id="wiDoctor" required class="w-full bg-cream-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold">
+            <!-- Dynamic DB doctors -->
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Priority Triage</label>
+          <select id="wiPriority" class="w-full bg-cream-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold">
+            <option value="Regular">Regular Queue (FIFO)</option>
+            <option value="Senior">Senior Citizen (Auto +1)</option>
+            <option value="Special">Differently Abled / Pregnant (+2)</option>
+            <option value="Emergency">Emergency (Immediate Slot #1)</option>
+          </select>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-2">
+          <button type="button" onclick="CarePulseApp.closeModal('walkInModal')" class="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-cream-100 rounded-xl">Cancel</button>
+          <button type="submit" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md transition">Generate Token</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Download Token Digital Modal -->
+  <div id="downloadTokenModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl border border-cream-300 max-w-sm w-full p-6 shadow-2xl text-center">
+      <div class="border-b border-dashed border-slate-300 pb-3 mb-4">
+        <span class="text-xs font-bold text-royal-600 uppercase tracking-widest block">CarePulse OPD Token</span>
+        <span id="dtTokenId" class="text-4xl font-black font-mono-code text-slate-900 block my-1">GM-101</span>
+        <span id="dtSpeciality" class="text-xs text-slate-500 font-semibold">General Medicine</span>
+      </div>
+
+      <div class="space-y-2 text-xs text-left bg-cream-50 p-3 rounded-2xl border border-cream-200 mb-4">
+        <div class="flex justify-between"><span class="text-slate-500">Patient:</span> <strong id="dtPatientName" class="text-slate-800">Suresh Chandra</strong></div>
+        <div class="flex justify-between"><span class="text-slate-500">Doctor:</span> <strong id="dtDoctorName" class="text-slate-800">Dr. A. Sharma</strong></div>
+        <div class="flex justify-between"><span class="text-slate-500">Room:</span> <strong id="dtRoom" class="text-royal-600">Room 101</strong></div>
+        <div class="flex justify-between"><span class="text-slate-500">Est. Wait:</span> <strong id="dtWaitTime" class="text-amber-600">~10 mins</strong></div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2">
+        <button onclick="CarePulseApp.closeModal('downloadTokenModal')" class="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-cream-100 rounded-xl">Close</button>
+        <button onclick="CarePulseApp.executeTokenDownload()" class="px-5 py-2 bg-royal-600 hover:bg-royal-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md">
+          <i data-lucide="download" class="w-3.5 h-3.5"></i> <span data-i18n="downloadToken">Download Token</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+
+  <!-- Main Application Script -->
+  <script src="app.js"></script>
+</body>
+</html>
