@@ -114,6 +114,38 @@ class OtpService {
     return await this.mailTransporter.sendMail(mailOptions);
   }
 
+  async dispatchPasswordResetEmail(email, name, resetCode) {
+    if (!this.emailConfigured || !this.mailTransporter) {
+      throw new Error("SMTP email service is not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS in .env to deliver real password reset emails.");
+    }
+
+    const mailOptions = {
+      from: this.smtpFrom,
+      to: email,
+      subject: `CarePulse Password Recovery Code: ${resetCode}`,
+      text: `Hello ${name || 'User'},\n\nYou requested to reset your password for CarePulse.\n\nYour 6-digit password reset verification code is: ${resetCode}\n\nThis code will expire in 15 minutes. If you did not make this request, you can safely ignore this email.`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <h2 style="color: #014BAA; margin: 0; font-size: 24px;">CarePulse</h2>
+            <p style="color: #64748b; font-size: 13px; margin: 4px 0 0;">Real-Time Insights. Better Care.</p>
+          </div>
+          <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 16px 0;" />
+          <p style="color: #1e293b; font-size: 15px;">Hello <strong>${name || 'User'}</strong>,</p>
+          <p style="color: #475569; font-size: 14px; line-height: 1.5;">We received a request to reset your password for your CarePulse account. Enter the verification code below on the password recovery screen to set a new password:</p>
+          <div style="background: #F8F3F0; border: 1px solid #e2e8f0; padding: 16px; text-align: center; border-radius: 10px; font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #014BAA; margin: 20px 0;">
+            ${resetCode}
+          </div>
+          <p style="color: #64748b; font-size: 12px; line-height: 1.5;">This reset code is valid for <strong>15 minutes</strong> and can only be used once. If you did not request a password reset, please disregard this email.</p>
+          <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 20px 0;" />
+          <p style="color: #94a3b8; font-size: 11px; text-align: center; margin: 0;">CarePulse Healthcare Systems &bull; Enterprise Hospital Queue Management</p>
+        </div>
+      `
+    };
+
+    return await this.mailTransporter.sendMail(mailOptions);
+  }
+
   async dispatchSmsOtp(phone, code) {
     const formattedPhone = phone.startsWith("+") ? phone : (phone.length === 10 ? `+91${phone}` : `+${phone}`);
 

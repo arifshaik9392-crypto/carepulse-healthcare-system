@@ -143,17 +143,18 @@
     <!-- ============================================================= -->
     <section id="authView" class="block max-w-xl mx-auto py-8">
       
-      <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-cream-300">
+      <!-- SIGN IN CARD (Patient, Staff, Doctor) -->
+      <div id="signInCard" class="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-cream-300">
         
         <div class="text-center mb-6">
           <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-royal-50 border border-royal-100 text-royal-600 mb-3 shadow-inner">
             <i data-lucide="shield-check" class="w-8 h-8 text-royal-600"></i>
           </div>
           <h2 class="text-xl font-black text-slate-900" id="authTitle" data-i18n="selectRolePrompt">Select Your Access Role</h2>
-          <p class="text-xs text-slate-500 mt-1" id="authSubtitle">Enterprise Role-Enforced Secure OTP Authentication</p>
+          <p class="text-xs text-slate-500 mt-1" id="authSubtitle">Secure Enterprise Password Authentication</p>
         </div>
 
-        <!-- 3 Specific Role Cards -->
+        <!-- 3 Specific Role Selection Cards -->
         <div class="grid grid-cols-3 gap-2.5 mb-6">
           <button type="button" onclick="CarePulseApp.selectAuthRole('Patient')" id="roleBtn-Patient" class="role-select-btn p-3 rounded-2xl border-2 border-royal-600 bg-royal-50 text-royal-700 flex flex-col items-center justify-center transition shadow-sm">
             <i data-lucide="user" class="w-5 h-5 mb-1 text-royal-600"></i>
@@ -174,44 +175,123 @@
           </button>
         </div>
 
-        <!-- Authentication Method Tabs (Email OTP vs Phone SMS OTP) -->
-        <div class="flex items-center p-1 bg-cream-100 rounded-2xl mb-6 border border-cream-200">
-          <button type="button" id="authMethodBtn-email" onclick="CarePulseApp.selectAuthMethod('email')" class="flex-1 py-2 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 bg-white text-royal-700 shadow-sm border border-slate-200">
-            <i data-lucide="mail" class="w-3.5 h-3.5"></i>
-            <span>Email OTP</span>
-          </button>
-          <button type="button" id="authMethodBtn-phone" onclick="CarePulseApp.selectAuthMethod('phone')" class="flex-1 py-2 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 text-slate-600 hover:text-slate-900">
-            <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
-            <span>Phone SMS OTP</span>
-          </button>
-        </div>
-
         <!-- Error Alert Banner -->
         <div id="authErrorBanner" class="hidden"></div>
 
-        <!-- STEP 1: CONTACT IDENTIFIER INPUT FORM -->
-        <div id="authStep1" class="space-y-4">
+        <!-- Sign In Form -->
+        <form onsubmit="CarePulseApp.handleSignIn(event)" class="space-y-4">
           
-          <!-- Email Input Group -->
-          <div id="emailInputGroup">
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-              Registered Email Address *
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5" data-i18n="emailOrPhone">
+              Email Address or Mobile Number *
             </label>
             <div class="relative">
               <i data-lucide="mail" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5"></i>
-              <input type="email" id="authEmailInput" placeholder="e.g. name@example.com" class="w-full bg-cream-50 border border-slate-300 rounded-xl pl-10 pr-3 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-royal-600 focus:ring-2 focus:ring-royal-100 transition" />
+              <input type="text" id="loginIdentifier" placeholder="e.g. name@carepulse.org or 9876543210" required class="w-full bg-cream-50 border border-slate-300 rounded-xl pl-10 pr-3 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-royal-600 focus:ring-2 focus:ring-royal-100 transition" />
             </div>
-            <p class="text-[11px] text-slate-500 mt-1">A cryptographically secure 6-digit OTP will be dispatched to your email via SMTP.</p>
           </div>
 
-          <!-- Phone Input Group -->
-          <div id="phoneInputGroup" class="hidden">
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-700" data-i18n="password">
+                Password *
+              </label>
+              <button type="button" onclick="CarePulseApp.openForgotPasswordModal()" class="text-xs text-royal-600 hover:text-royal-800 font-semibold hover:underline" data-i18n="forgotPassword">
+                Forgot password?
+              </button>
+            </div>
+            <div class="relative">
+              <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5"></i>
+              <input type="password" id="loginPassword" placeholder="Enter your password" required class="w-full bg-cream-50 border border-slate-300 rounded-xl pl-10 pr-10 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-royal-600 focus:ring-2 focus:ring-royal-100 transition" />
+              <button type="button" onclick="CarePulseApp.togglePasswordVisibility('loginPassword', this)" class="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600 transition" title="Show/Hide Password">
+                <i data-lucide="eye" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between text-xs pt-1">
+            <label class="flex items-center gap-2 cursor-pointer select-none text-slate-600">
+              <input type="checkbox" id="loginRememberMe" class="rounded border-slate-300 text-royal-600 focus:ring-royal-500 w-4 h-4" />
+              <span data-i18n="rememberMe">Remember me for 7 days</span>
+            </label>
+          </div>
+
+          <button type="submit" id="btnSignIn" class="w-full py-3.5 bg-royal-600 hover:bg-royal-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-royal-600/25 flex items-center justify-center gap-2 transition active:scale-98">
+            <i data-lucide="log-in" class="w-4 h-4"></i> <span id="btnSignInText" data-i18n="signIn">Sign In</span>
+          </button>
+        </form>
+
+        <!-- Dynamic Role Context & Registration Link -->
+        <div id="patientRegisterPrompt" class="mt-5 text-center text-xs text-slate-600 pt-4 border-t border-cream-200">
+          <span>New Patient?</span>
+          <button type="button" onclick="CarePulseApp.toggleAuthMode('register')" class="text-royal-600 hover:text-royal-800 font-bold ml-1 hover:underline">
+            Create an account
+          </button>
+        </div>
+
+        <div id="staffRestrictedPrompt" class="hidden mt-5 bg-amber-50 border border-amber-200 rounded-2xl p-3.5 text-xs text-amber-800">
+          <div class="flex items-start gap-2">
+            <i data-lucide="lock" class="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5"></i>
+            <div>
+              <strong class="font-bold block">Authorized Personnel Only</strong>
+              <p class="text-[11px] text-amber-700 mt-0.5">Public registration is disabled for Staff and Doctor roles. Accounts are provisioned and audited by Hospital Administration.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Provisioned Test Credentials Helper -->
+        <div class="mt-6 bg-royal-50/70 border border-royal-200/80 rounded-2xl p-3.5 text-[11px] text-slate-600 space-y-1">
+          <strong class="text-royal-700 block font-bold">Authorized Test Accounts (Password: CarePulse@2026):</strong>
+          <p>&bull; <strong>Doctor:</strong> dr.sharma@carepulse.org or +91 9876543210</p>
+          <p>&bull; <strong>Staff:</strong> staff@carepulse.org or +91 9888877777</p>
+          <p>&bull; <strong>Patient:</strong> patient@carepulse.org or +91 9123456789</p>
+        </div>
+
+      </div>
+
+      <!-- CREATE PATIENT ACCOUNT CARD (Patients Only) -->
+      <div id="registerCard" class="hidden bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-cream-300">
+        
+        <div class="text-center mb-6">
+          <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-royal-50 border border-royal-100 text-royal-600 mb-3 shadow-inner">
+            <i data-lucide="user-plus" class="w-8 h-8 text-royal-600"></i>
+          </div>
+          <h2 class="text-xl font-black text-slate-900" data-i18n="registerTitle">New Patient Registration</h2>
+          <p class="text-xs text-slate-500 mt-1">Create your personal medical queue & appointment account</p>
+        </div>
+
+        <!-- Error Alert Banner -->
+        <div id="regErrorBanner" class="hidden"></div>
+
+        <form onsubmit="CarePulseApp.handleRegister(event)" class="space-y-4">
+          
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5" data-i18n="fullName">
+              Full Name *
+            </label>
+            <div class="relative">
+              <i data-lucide="user" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5"></i>
+              <input type="text" id="regFullName" placeholder="e.g. Ramesh Chandra" required class="w-full bg-cream-50 border border-slate-300 rounded-xl pl-10 pr-3 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-royal-600 focus:ring-2 focus:ring-royal-100 transition" />
+            </div>
+          </div>
+
+          <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-              Mobile Phone Number (SMS Delivery) *
+              Email Address *
+            </label>
+            <div class="relative">
+              <i data-lucide="mail" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5"></i>
+              <input type="email" id="regEmail" placeholder="e.g. ramesh@example.com" required class="w-full bg-cream-50 border border-slate-300 rounded-xl pl-10 pr-3 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-royal-600 focus:ring-2 focus:ring-royal-100 transition" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+              Mobile Number (with Country Code) *
             </label>
             <div class="flex gap-2">
               <div class="relative w-28">
-                <select id="authCountryCode" class="w-full bg-cream-50 border border-slate-300 rounded-xl px-2 py-3 text-xs font-bold text-slate-800 focus:outline-none focus:border-royal-600">
+                <select id="regCountryCode" class="w-full bg-cream-50 border border-slate-300 rounded-xl px-2 py-3 text-xs font-bold text-slate-800 focus:outline-none focus:border-royal-600">
                   <option value="+91" selected>🇮🇳 +91</option>
                   <option value="+1">🇺🇸 +1</option>
                   <option value="+44">🇬🇧 +44</option>
@@ -222,89 +302,66 @@
               </div>
               <div class="relative flex-1">
                 <i data-lucide="phone" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5"></i>
-                <input type="tel" id="authPhoneInput" maxlength="12" placeholder="e.g. 9876543210" class="w-full bg-cream-50 border border-slate-300 rounded-xl pl-10 pr-3 py-3 text-sm text-slate-800 font-mono-code placeholder-slate-400 focus:outline-none focus:border-royal-600 focus:ring-2 focus:ring-royal-100 transition" />
-              </div>
-            </div>
-            <p class="text-[11px] text-slate-500 mt-1">Real SMS verification code dispatched through Twilio / Fast2SMS gateway.</p>
-          </div>
-
-          <!-- Patient Profile Registration Details (Shown only for Patient role) -->
-          <div id="patientRegFields" class="space-y-3 pt-3 border-t border-cream-200">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold text-royal-700 uppercase tracking-wider">Patient Profile (New Patients)</span>
-              <span class="text-[10px] text-slate-500">Auto-created on verify</span>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label class="block text-[11px] font-bold text-slate-600 mb-1" data-i18n="fullName">Full Name</label>
-                <input type="text" id="regPatientName" placeholder="e.g. Ramesh Chandra" class="w-full bg-cream-50 border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-royal-600" />
-              </div>
-              <div class="grid grid-cols-2 gap-2">
-                <div>
-                  <label class="block text-[11px] font-bold text-slate-600 mb-1" data-i18n="age">Age</label>
-                  <input type="number" id="regPatientAge" min="1" max="120" value="35" class="w-full bg-cream-50 border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono-code text-slate-800 focus:outline-none focus:border-royal-600" />
-                </div>
-                <div>
-                  <label class="block text-[11px] font-bold text-slate-600 mb-1" data-i18n="gender">Gender</label>
-                  <select id="regPatientGender" class="w-full bg-cream-50 border border-slate-300 rounded-lg px-2 py-2 text-xs text-slate-800 focus:outline-none focus:border-royal-600">
-                    <option value="Male" data-i18n="male">Male</option>
-                    <option value="Female" data-i18n="female">Female</option>
-                    <option value="Transgender" data-i18n="transgender">Transgender</option>
-                  </select>
-                </div>
+                <input type="tel" id="regPhone" placeholder="e.g. 9876543210" required class="w-full bg-cream-50 border border-slate-300 rounded-xl pl-10 pr-3 py-3 text-sm text-slate-800 font-mono-code placeholder-slate-400 focus:outline-none focus:border-royal-600 focus:ring-2 focus:ring-royal-100 transition" />
               </div>
             </div>
           </div>
 
-          <button type="button" onclick="CarePulseApp.requestOtp()" id="btnRequestOtp" class="w-full py-3.5 bg-royal-600 hover:bg-royal-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-royal-600/25 flex items-center justify-center gap-2 transition active:scale-98">
-            <i data-lucide="send" class="w-4 h-4"></i> <span id="btnRequestOtpText">Send Secure OTP</span>
-          </button>
-
-          <!-- Provisioned Credentials Quick Helper (For Testing) -->
-          <div class="bg-royal-50/70 border border-royal-200/80 rounded-xl p-3 text-[11px] text-slate-600 space-y-1">
-            <strong class="text-royal-700 block font-bold">Authorized Test Accounts (Provisioned in Hospital DB):</strong>
-            <p>&bull; <strong>Doctor:</strong> dr.sharma@carepulse.org or +91 9876543210</p>
-            <p>&bull; <strong>Staff:</strong> staff@carepulse.org or +91 9888877777</p>
-            <p>&bull; <strong>Patient:</strong> patient@carepulse.org or +91 9123456789 (or any new email / phone to self-register)</p>
-          </div>
-        </div>
-
-        <!-- STEP 2: SIX-DIGIT OTP VERIFICATION WITH AUTOMATIC FOCUS & PASTE -->
-        <div id="authStep2" class="space-y-5 hidden">
-          <div class="bg-royal-50 border border-royal-200 rounded-2xl p-3.5 flex items-center justify-between text-xs">
+          <div class="grid grid-cols-2 gap-3">
             <div>
-              <span class="text-slate-500 block text-[11px]">OTP Dispatched via <span id="otpChannelDisplay" class="font-bold text-royal-700">Email</span> to:</span>
-              <strong id="otpTargetDisplay" class="font-mono-code text-royal-800 text-sm">user@example.com</strong>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5" data-i18n="age">
+                Age
+              </label>
+              <input type="number" id="regAge" min="1" max="120" value="30" class="w-full bg-cream-50 border border-slate-300 rounded-xl px-3 py-3 text-sm font-mono-code text-slate-800 focus:outline-none focus:border-royal-600" />
             </div>
-            <button type="button" onclick="CarePulseApp.backToStep1()" class="text-xs text-royal-600 hover:underline font-bold px-2 py-1 bg-white border border-royal-200 rounded-lg">Change</button>
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5" data-i18n="gender">
+                Gender *
+              </label>
+              <select id="regGender" class="w-full bg-cream-50 border border-slate-300 rounded-xl px-3 py-3 text-sm text-slate-800 focus:outline-none focus:border-royal-600 font-semibold">
+                <option value="Male" data-i18n="male">Male</option>
+                <option value="Female" data-i18n="female">Female</option>
+                <option value="Transgender" data-i18n="transgender">Transgender</option>
+              </select>
+            </div>
           </div>
 
           <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2 text-center" data-i18n="enterOtp">
-              Enter 6-Digit Verification Code
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5" data-i18n="password">
+              Password *
             </label>
-            
-            <!-- 6 Discrete Input Boxes for Seamless Auto-Advance & Paste -->
-            <div class="flex justify-center gap-2 sm:gap-3" id="otpDigitContainer">
-              <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" class="otp-box w-11 h-13 text-center text-xl font-bold font-mono-code bg-cream-50 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-royal-600 focus:ring-2 focus:ring-royal-100 transition shadow-inner" data-index="0" />
-              <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" class="otp-box w-11 h-13 text-center text-xl font-bold font-mono-code bg-cream-50 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-royal-600 focus:ring-2 focus:ring-royal-100 transition shadow-inner" data-index="1" />
-              <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" class="otp-box w-11 h-13 text-center text-xl font-bold font-mono-code bg-cream-50 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-royal-600 focus:ring-2 focus:ring-royal-100 transition shadow-inner" data-index="2" />
-              <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" class="otp-box w-11 h-13 text-center text-xl font-bold font-mono-code bg-cream-50 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-royal-600 focus:ring-2 focus:ring-royal-100 transition shadow-inner" data-index="3" />
-              <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" class="otp-box w-11 h-13 text-center text-xl font-bold font-mono-code bg-cream-50 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-royal-600 focus:ring-2 focus:ring-royal-100 transition shadow-inner" data-index="4" />
-              <input type="text" maxlength="1" pattern="[0-9]" inputmode="numeric" class="otp-box w-11 h-13 text-center text-xl font-bold font-mono-code bg-cream-50 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-royal-600 focus:ring-2 focus:ring-royal-100 transition shadow-inner" data-index="5" />
+            <div class="relative">
+              <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5"></i>
+              <input type="password" id="regPassword" placeholder="Min. 8 characters (uppercase, lowercase, number)" required class="w-full bg-cream-50 border border-slate-300 rounded-xl pl-10 pr-10 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-royal-600 focus:ring-2 focus:ring-royal-100 transition" />
+              <button type="button" onclick="CarePulseApp.togglePasswordVisibility('regPassword', this)" class="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600 transition" title="Show/Hide Password">
+                <i data-lucide="eye" class="w-4 h-4"></i>
+              </button>
             </div>
+            <p class="text-[11px] text-slate-500 mt-1">Must be at least 8 characters with 1 uppercase letter, 1 lowercase letter, and 1 number.</p>
+          </div>
 
-            <!-- Fallback hidden raw OTP input for submission -->
-            <input type="hidden" id="authOtpCode" />
-
-            <div class="flex items-center justify-between mt-3 text-xs text-slate-500 px-1">
-              <span id="otpTimerDisplay" class="font-mono-code">Expires in: 5m 00s</span>
-              <button type="button" id="btnResendOtp" onclick="CarePulseApp.requestOtp()" class="text-royal-600 font-bold hover:underline disabled:opacity-40 disabled:cursor-not-allowed">Resend OTP</button>
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5" data-i18n="confirmPassword">
+              Confirm Password *
+            </label>
+            <div class="relative">
+              <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5"></i>
+              <input type="password" id="regConfirmPassword" placeholder="Re-enter your password" required class="w-full bg-cream-50 border border-slate-300 rounded-xl pl-10 pr-10 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-royal-600 focus:ring-2 focus:ring-royal-100 transition" />
+              <button type="button" onclick="CarePulseApp.togglePasswordVisibility('regConfirmPassword', this)" class="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600 transition" title="Show/Hide Password">
+                <i data-lucide="eye" class="w-4 h-4"></i>
+              </button>
             </div>
           </div>
 
-          <button type="button" onclick="CarePulseApp.verifyOtp()" id="btnVerifyOtp" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition active:scale-98">
-            <i data-lucide="check-circle" class="w-4 h-4"></i> <span data-i18n="verifyOtp">Verify OTP & Enter</span>
+          <button type="submit" id="btnRegister" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition active:scale-98">
+            <i data-lucide="check-circle" class="w-4 h-4"></i> <span id="btnRegisterText">Create Account & Enter Portal</span>
+          </button>
+        </form>
+
+        <div class="mt-5 text-center text-xs text-slate-600 pt-4 border-t border-cream-200">
+          <span>Already registered?</span>
+          <button type="button" onclick="CarePulseApp.toggleAuthMode('signin')" class="text-royal-600 hover:text-royal-800 font-bold ml-1 hover:underline">
+            Sign In here
           </button>
         </div>
 
@@ -650,6 +707,89 @@
           <i data-lucide="download" class="w-3.5 h-3.5"></i> <span data-i18n="downloadToken">Download Token</span>
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- Forgot Password / Recovery Modal -->
+  <div id="forgotPasswordModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl border border-cream-300 max-w-md w-full p-6 sm:p-7 shadow-2xl relative">
+      
+      <div class="flex items-center justify-between pb-3 mb-4 border-b border-cream-200">
+        <div class="flex items-center gap-2">
+          <div class="w-9 h-9 rounded-xl bg-royal-50 border border-royal-100 flex items-center justify-center text-royal-600">
+            <i data-lucide="key-round" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-900">Password Recovery</h3>
+            <p class="text-[10px] text-slate-500">Secure SMTP email verification</p>
+          </div>
+        </div>
+        <button onclick="CarePulseApp.closeModal('forgotPasswordModal')" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-cream-100 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div id="forgotErrorBanner" class="hidden"></div>
+
+      <!-- STEP 1: Request Password Reset Code -->
+      <div id="forgotStep1" class="space-y-4">
+        <p class="text-xs text-slate-600">Enter your registered email address or mobile number. We will send a secure 6-digit verification code to your email.</p>
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Registered Email or Phone *</label>
+          <div class="relative">
+            <i data-lucide="mail" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+            <input type="text" id="forgotIdentifier" placeholder="e.g. name@carepulse.org or 9876543210" class="w-full bg-cream-50 border border-slate-300 rounded-xl pl-9 pr-3 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-royal-600 focus:ring-2 focus:ring-royal-100" />
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onclick="CarePulseApp.closeModal('forgotPasswordModal')" class="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-cream-100 rounded-xl">Cancel</button>
+          <button type="button" onclick="CarePulseApp.requestPasswordReset()" id="btnRequestReset" class="px-5 py-2.5 bg-royal-600 hover:bg-royal-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md transition flex items-center gap-1.5">
+            <i data-lucide="send" class="w-3.5 h-3.5"></i> <span>Send Reset Code</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 2: Verify Code and Set New Password -->
+      <div id="forgotStep2" class="space-y-3.5 hidden">
+        <div class="bg-royal-50 border border-royal-200 rounded-xl p-3 text-xs text-royal-800">
+          <p id="forgotEmailHint" class="font-semibold">Reset code sent! Please check your email.</p>
+          <p class="text-[11px] text-slate-500 mt-0.5">Code expires in 15 minutes.</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">6-Digit Verification Code *</label>
+          <input type="text" id="forgotResetCode" maxlength="6" placeholder="e.g. 548291" class="w-full bg-cream-50 border border-slate-300 rounded-xl px-3 py-2.5 text-center text-lg font-mono-code font-bold tracking-widest text-slate-900 focus:outline-none focus:border-royal-600" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">New Password *</label>
+          <div class="relative">
+            <input type="password" id="forgotNewPassword" placeholder="Min. 8 characters (uppercase, lowercase, number)" class="w-full bg-cream-50 border border-slate-300 rounded-xl pl-3 pr-10 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-royal-600" />
+            <button type="button" onclick="CarePulseApp.togglePasswordVisibility('forgotNewPassword', this)" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 p-0.5" title="Show/Hide Password">
+              <i data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Confirm New Password *</label>
+          <div class="relative">
+            <input type="password" id="forgotConfirmPassword" placeholder="Re-enter new password" class="w-full bg-cream-50 border border-slate-300 rounded-xl pl-3 pr-10 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-royal-600" />
+            <button type="button" onclick="CarePulseApp.togglePasswordVisibility('forgotConfirmPassword', this)" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 p-0.5" title="Show/Hide Password">
+              <i data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-2">
+          <button type="button" onclick="CarePulseApp.backToForgotStep1()" class="text-xs text-slate-500 hover:underline font-semibold">Change Identifier</button>
+          <button type="button" onclick="CarePulseApp.submitPasswordReset()" id="btnSubmitReset" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md transition flex items-center gap-1.5">
+            <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> <span>Update Password</span>
+          </button>
+        </div>
+      </div>
+
     </div>
   </div>
 

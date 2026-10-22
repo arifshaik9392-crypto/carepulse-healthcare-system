@@ -123,7 +123,14 @@ const TRANSLATIONS = {
     statusCompleted: "పూర్తయింది",
     statusSkipped: "దాటవేయబడింది",
     nowServing: "ప్రస్తుతం సేవలందిస్తున్నది",
-    upNext: "తదుపరి క్యూ"
+    upNext: "తదుపరి క్యూ",
+    password: "పాస్‌వర్డ్ (Password)",
+    confirmPassword: "పాస్‌వర్డ్ నిర్ధారించండి",
+    rememberMe: "నన్ను గుర్తుంచుకో",
+    forgotPassword: "పాస్‌వర్డ్ మర్చిపోయారా?",
+    signIn: "ప్రవేశించండి (Sign In)",
+    createAccount: "ఖాతాను సృష్టించండి",
+    registerAndEnter: "నమోదు చేసుకుని ప్రవేశించండి"
   },
   hi: {
     brandName: "केयरपल्स (CarePulse)",
@@ -182,7 +189,14 @@ const TRANSLATIONS = {
     statusCompleted: "पूर्ण हुआ",
     statusSkipped: "अनुपस्थित / छूटा",
     nowServing: "वर्तमान में सेवारत",
-    upNext: "अगली कतार"
+    upNext: "अगली कतार",
+    password: "पासवर्ड (Password)",
+    confirmPassword: "पासवर्ड की पुष्टि करें",
+    rememberMe: "मुझे याद रखें",
+    forgotPassword: "पासवर्ड भूल गए?",
+    signIn: "साइन इन करें (Sign In)",
+    createAccount: "खाता बनाएं",
+    registerAndEnter: "पंजीकरण करें और प्रवेश करें"
   },
   ta: {
     brandName: "கேர்பல்ஸ் (CarePulse)",
@@ -241,7 +255,14 @@ const TRANSLATIONS = {
     statusCompleted: "முடிந்தது",
     statusSkipped: "தவிர்க்கப்பட்டது",
     nowServing: "தற்போது பரிசோதிக்கப்படுபவர்",
-    upNext: "அடுத்த வரிசை"
+    upNext: "அடுத்த வரிசை",
+    password: "கடவுச்சொல் (Password)",
+    confirmPassword: "கடவுச்சொல்லை உறுதிப்படுத்தவும்",
+    rememberMe: "என்னை நினைவில் கொள்",
+    forgotPassword: "கடவுச்சொல் மறந்துவிட்டதா?",
+    signIn: "உள்நுழைக (Sign In)",
+    createAccount: "கணக்கை உருவாக்கவும்",
+    registerAndEnter: "பதிவு செய்து நுழையவும்"
   },
   kn: {
     brandName: "ಕೇರ್‌ಪಲ್ಸ್ (CarePulse)",
@@ -300,7 +321,14 @@ const TRANSLATIONS = {
     statusCompleted: "ಪೂರ್ಣಗೊಂಡಿದೆ",
     statusSkipped: "ತಪ್ಪಿಹೋಗಿದೆ",
     nowServing: "ಪ್ರಸ್ತುತ ಸೇವೆಯಲ್ಲಿರುವವರು",
-    upNext: "ಮುಂದಿನ ಸರದಿ"
+    upNext: "ಮುಂದಿನ ಸರದಿ",
+    password: "ಪಾಸ್‌ವರ್ಡ್ (Password)",
+    confirmPassword: "ಪಾಸ್‌ವರ್ಡ್ ದೃಢೀಕರಿಸಿ",
+    rememberMe: "ನನ್ನನ್ನು ನೆನಪಿಡಿ",
+    forgotPassword: "ಪಾಸ್‌ವರ್ಡ್ ಮರೆತಿರಾ?",
+    signIn: "ಸೈನ್ ಇನ್ (Sign In)",
+    createAccount: "ಖಾತೆ ತೆರೆಯಿರಿ",
+    registerAndEnter: "ನೋಂದಾಯಿಸಿ ಪ್ರವೇಶಿಸಿ"
   },
   ml: {
     brandName: "കെയർപൾസ് (CarePulse)",
@@ -359,6 +387,13 @@ const TRANSLATIONS = {
     statusCompleted: "പൂർത്തിയായി",
     statusSkipped: "ഹാജരായില്ല",
     nowServing: "ഇപ്പോൾ സേവനം നൽകുന്നത്",
-    upNext: "അടുത്ത ക്യൂ"
+    upNext: "അടുത്ത ക്യൂ",
+    password: "പാസ്‌വേഡ് (Password)",
+    confirmPassword: "പാസ്‌വേഡ് സ്ഥിരീകരിക്കുക",
+    rememberMe: "എന്നെ ഓർക്കുക",
+    forgotPassword: "പാസ്‌വേഡ് മറന്നോ?",
+    signIn: "സൈൻ ഇൻ ചെയ്യുക (Sign In)",
+    createAccount: "ഒരു അക്കൗണ്ട് ഉണ്ടാക്കുക",
+    registerAndEnter: "രജിസ്റ്റർ ചെയ്തു പ്രവേശിക്കുക"
   }
 };

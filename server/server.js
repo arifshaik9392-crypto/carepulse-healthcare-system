@@ -57,175 +57,84 @@ function authorizeRole(allowedRoles) {
 // 1. AUTHENTICATION & THREE SEPARATE ROLE EXPERIENCES (REAL OTP-BASED)
 // ============================================================================
 
-// Check system configuration and provider readiness
+// In-memory store for password reset requests (cleanIdentifier -> { token, expiresAt, userId, userEmail })
+const resetTokens = new Map();
+
+// Helper: Password strength validator: at least 8 chars, 1 uppercase, 1 lowercase, 1 number
+function validatePasswordStrength(password) {
+  if (!password || typeof password !== 'string') return false;
+  const hasUpper = /[A-Z]/.test(password);
+  const hasLower = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  return password.length >= 8 && hasUpper && hasLower && hasNumber;
+}
+
+// Helper: Find user by email or mobile phone
+function findUserByIdentifier(users, identifier) {
+  if (!identifier) return null;
+  const cleanId = identifier.trim().toLowerCase();
+  const cleanDigits = cleanId.replace(/[^0-9]/g, '');
+  return users.find(u => {
+    if (u.email && u.email.toLowerCase() === cleanId) return true;
+    if (u.phone) {
+      if (u.phone === cleanId) return true;
+      const userDigits = u.phone.replace(/[^0-9]/g, '');
+      if (cleanDigits.length >= 10 && userDigits.length >= 10) {
+        return userDigits.slice(-10) === cleanDigits.slice(-10);
+      }
+    }
+    return false;
+  });
+}
+
+// Check system configuration and auth method
 app.get('/api/system/status', (req, res) => {
   res.json({
-    authMethod: "otp",
-    otpStatus: otpService.getProviderStatus(),
+    authMethod: "password",
     outperoStatus: outperoService.getConfigurationGuide(),
     rolesSupported: ["Patient", "Staff", "Doctor"],
     specialitiesCount: SPECIALITIES.length
   });
 });
 
-// Request OTP for Email or Phone
-app.post('/api/auth/request-otp', async (req, res) => {
-  const { identifier, targetRole, channel, profileData } = req.body;
+// Password Login for Patient, Staff, and Doctor
+app.post('/api/auth/login', (req, res) => {
+  const { identifier, password, targetRole, rememberMe } = req.body;
 
-  if (!identifier) {
-    return res.status(400).json({ error: "Email address or phone number is required." });
+  if (!identifier || !password) {
+    return res.status(400).json({ error: "Email/phone and password are required." });
   }
 
   if (!["Patient", "Staff", "Doctor"].includes(targetRole)) {
     return res.status(400).json({ error: "Valid target role (Patient, Staff, or Doctor) is required." });
   }
 
-  const cleanId = identifier.trim().toLowerCase();
-  
-  // Determine if phone or email
-  const isPhone = channel === 'phone' || /^[0-9]{10}$/.test(cleanId) || /^\+[0-9]{10,14}$/.test(cleanId);
-  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanId);
-
-  if (!isPhone && !isEmail) {
-    return res.status(400).json({
-      error: "Please enter a valid email address or phone number with country code."
-    });
-  }
-
   const data = db.read();
-
-  // Find user by email or phone
-  const existingUser = data.users.find(u => {
-    if (isPhone) {
-      const cleanDigits = cleanId.replace(/[^0-9]/g, '').slice(-10);
-      const userPhoneDigits = u.phone ? u.phone.replace(/[^0-9]/g, '').slice(-10) : '';
-      return userPhoneDigits && userPhoneDigits === cleanDigits;
-    } else {
-      return u.email && u.email.toLowerCase() === cleanId;
-    }
-  });
-
-  // Strict role check for Staff and Doctor: Account must exist and be provisioned in DB
-  if (targetRole !== "Patient") {
-    if (!existingUser) {
-      return res.status(403).json({
-        error: `Access Denied: No authorized ${targetRole} account found for ${identifier}. Staff and Doctor accounts must be securely provisioned by hospital administration.`
-      });
-    }
-
-    if (existingUser.role !== targetRole) {
-      return res.status(403).json({
-        error: `Role Mismatch: This account is registered as ${existingUser.role}, not ${targetRole}. Please select the ${existingUser.role} portal.`
-      });
-    }
-
-    if (existingUser.active === false) {
-      return res.status(403).json({
-        error: "Your staff/doctor account has been deactivated. Please contact administration."
-      });
-    }
-  }
-
-  // Request real OTP dispatch via configured service (SMTP / Twilio / Fast2SMS)
-  const result = await otpService.requestOtp(cleanId, isPhone, targetRole, profileData || null);
-
-  if (!result.success) {
-    return res.status(result.status || 400).json({
-      error: result.error,
-      configured: result.configured !== undefined ? result.configured : true,
-      channel: result.channel || (isPhone ? 'SMS' : 'Email'),
-      requiredConfig: result.requiredConfig || null
-    });
-  }
-
-  db.logAudit(
-    existingUser || { id: "guest", role: targetRole, name: cleanId },
-    "OTP_REQUEST_DISPATCHED",
-    `Real OTP dispatched via ${result.channel} for ${targetRole} login.`
-  );
-
-  res.json({
-    success: true,
-    message: `Secure OTP code has been sent to your ${isPhone ? 'phone via SMS' : 'email address'}.`,
-    channel: result.channel,
-    expiresInSeconds: result.expiresInSeconds || 300,
-    cooldownSeconds: result.cooldownSeconds || 60
-  });
-});
-
-// Verify OTP & Authenticate
-app.post('/api/auth/verify-otp', (req, res) => {
-  const { identifier, otpCode, targetRole, registerDetails } = req.body;
-
-  if (!identifier || !otpCode) {
-    return res.status(400).json({ error: "Identifier and 6-digit OTP code are required." });
-  }
-
-  if (!["Patient", "Staff", "Doctor"].includes(targetRole)) {
-    return res.status(400).json({ error: "Valid target role is required." });
-  }
-
-  const cleanId = identifier.trim().toLowerCase();
-  const verifyResult = otpService.verifyOtp(cleanId, otpCode);
-
-  if (!verifyResult.success) {
-    return res.status(400).json({
-      error: verifyResult.error,
-      attemptsLeft: verifyResult.attemptsLeft !== undefined ? verifyResult.attemptsLeft : null
-    });
-  }
-
-  const isPhone = /^[0-9]{10}$/.test(cleanId) || /^\+[0-9]{10,14}$/.test(cleanId);
-  const data = db.read();
-
-  // Find user by email or phone
-  let user = data.users.find(u => {
-    if (isPhone) {
-      const cleanDigits = cleanId.replace(/[^0-9]/g, '').slice(-10);
-      const userPhoneDigits = u.phone ? u.phone.replace(/[^0-9]/g, '').slice(-10) : '';
-      return userPhoneDigits && userPhoneDigits === cleanDigits;
-    } else {
-      return u.email && u.email.toLowerCase() === cleanId;
-    }
-  });
-
-  // If role is Staff or Doctor, user must exist and match role
-  if (targetRole !== "Patient") {
-    if (!user || user.role !== targetRole) {
-      return res.status(403).json({
-        error: `Authorization failure: Account does not have ${targetRole} privileges.`
-      });
-    }
-  }
-
-  // If Patient and does not exist yet: Auto-register patient profile
-  if (!user && targetRole === "Patient") {
-    const defaultName = registerDetails?.name?.trim() || `Patient ${cleanId.slice(-4)}`;
-    user = {
-      id: "usr_pat_" + Date.now(),
-      name: defaultName,
-      email: isPhone ? (registerDetails?.email?.trim().toLowerCase() || "") : cleanId,
-      phone: isPhone ? cleanId : (registerDetails?.phone?.trim() || ""),
-      role: "Patient",
-      gender: ["Male", "Female", "Transgender"].includes(registerDetails?.gender) ? registerDetails.gender : "Male",
-      age: registerDetails?.age ? parseInt(registerDetails.age, 10) : 32,
-      active: true,
-      createdAt: new Date().toISOString()
-    };
-    data.users.push(user);
-    db.write(data);
-    db.logAudit(user, "PATIENT_SELF_REGISTER", `New patient profile verified & created: ${user.name}`);
-  }
+  const user = findUserByIdentifier(data.users, identifier);
 
   if (!user) {
-    return res.status(404).json({ error: "User account could not be found or registered." });
+    return res.status(401).json({ error: "Invalid email/phone or password." });
   }
 
+  // Strict Backend Role Enforcement: user's registered role MUST match the portal targetRole
+  if (user.role !== targetRole) {
+    return res.status(403).json({
+      error: `Account role mismatch. This account is registered as ${user.role}, not ${targetRole}. Please use the ${user.role} sign-in portal.`
+    });
+  }
+
+  // Ensure account is active
   if (user.active === false) {
-    return res.status(403).json({ error: "This account has been deactivated." });
+    return res.status(403).json({ error: "This account has been deactivated. Please contact hospital administration." });
   }
 
-  // Generate 24h JWT with enforced backend role
+  // Verify password using bcrypt
+  const isMatch = user.passwordHash ? bcrypt.compareSync(password, user.passwordHash) : false;
+  if (!isMatch) {
+    return res.status(401).json({ error: "Invalid email/phone or password." });
+  }
+
+  // Generate JWT token (7 days if rememberMe, otherwise 24h)
   const token = jwt.sign(
     {
       id: user.id,
@@ -236,25 +145,217 @@ app.post('/api/auth/verify-otp', (req, res) => {
       speciality: user.speciality || null
     },
     JWT_SECRET,
-    { expiresIn: '24h' }
+    { expiresIn: rememberMe ? '7d' : '24h' }
   );
 
-  db.logAudit(user, "AUTH_LOGIN_SUCCESS", `${user.role} verified real OTP and logged in successfully.`);
+  db.logAudit(user, "AUTH_LOGIN_SUCCESS", `${user.role} signed in successfully via password authentication.`);
 
-  // Return safe user object (never return sensitive data)
+  const { passwordHash, ...safeUser } = user;
   res.json({
     success: true,
     token,
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-      speciality: user.speciality || null,
-      gender: user.gender,
-      age: user.age
+    user: safeUser
+  });
+});
+
+// Patient Self-Registration with Secure Password Hashing
+app.post('/api/auth/register', (req, res) => {
+  const { name, email, phone, password, confirmPassword, gender, age } = req.body;
+
+  if (!name || !email || !phone || !password || !confirmPassword) {
+    return res.status(400).json({ error: "Full name, email address, mobile number, and password are required." });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    return res.status(400).json({ error: "Please enter a valid email address (e.g. name@example.com)." });
+  }
+
+  const cleanPhone = phone.trim();
+  const cleanDigits = cleanPhone.replace(/[^0-9]/g, '');
+  if (cleanDigits.length < 10 || cleanDigits.length > 15) {
+    return res.status(400).json({ error: "Please enter a valid mobile number with country code (e.g. +91 9876543210)." });
+  }
+
+  if (password !== confirmPassword) {
+    return res.status(400).json({ error: "Password and Confirm Password do not match." });
+  }
+
+  if (!validatePasswordStrength(password)) {
+    return res.status(400).json({
+      error: "Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number."
+    });
+  }
+
+  const data = db.read();
+
+  // Prevent duplicate accounts by email
+  const existingByEmail = data.users.find(u => u.email && u.email.toLowerCase() === cleanEmail);
+  if (existingByEmail) {
+    return res.status(409).json({ error: "An account with this email address already exists. Please sign in or use a different email." });
+  }
+
+  // Prevent duplicate accounts by phone
+  const existingByPhone = data.users.find(u => {
+    if (!u.phone) return false;
+    const uDigits = u.phone.replace(/[^0-9]/g, '');
+    return uDigits.length >= 10 && uDigits.slice(-10) === cleanDigits.slice(-10);
+  });
+  if (existingByPhone) {
+    return res.status(409).json({ error: "An account with this mobile number already exists. Please sign in or use a different phone number." });
+  }
+
+  // Hash password securely with bcrypt
+  const salt = bcrypt.genSaltSync(10);
+  const passwordHash = bcrypt.hashSync(password, salt);
+
+  const newUser = {
+    id: "usr_pat_" + Date.now(),
+    name: name.trim(),
+    email: cleanEmail,
+    phone: cleanPhone,
+    passwordHash,
+    role: "Patient", // Only Patient can register publicly; Staff and Doctor access is strictly provisioned
+    gender: ["Male", "Female", "Transgender"].includes(gender) ? gender : "Male",
+    age: age ? parseInt(age, 10) : 30,
+    active: true,
+    createdAt: new Date().toISOString()
+  };
+
+  data.users.push(newUser);
+  db.write(data);
+  db.logAudit(newUser, "PATIENT_SELF_REGISTER", `New patient registered: ${newUser.name} (${newUser.email})`);
+
+  // Auto-login upon registration
+  const token = jwt.sign(
+    {
+      id: newUser.id,
+      name: newUser.name,
+      email: newUser.email,
+      phone: newUser.phone,
+      role: newUser.role,
+      speciality: null
+    },
+    JWT_SECRET,
+    { expiresIn: '24h' }
+  );
+
+  const { passwordHash: _, ...safeUser } = newUser;
+  res.status(201).json({
+    success: true,
+    message: "Registration successful. Welcome to CarePulse!",
+    token,
+    user: safeUser
+  });
+});
+
+// Forgot Password - Initiate Reset Request
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const { identifier } = req.body;
+  if (!identifier) {
+    return res.status(400).json({ error: "Email address or mobile number is required." });
+  }
+
+  const data = db.read();
+  const user = findUserByIdentifier(data.users, identifier);
+
+  if (!user) {
+    return res.status(404).json({ error: "No account found with this email address or mobile number." });
+  }
+
+  // Generate 6-digit cryptographic reset code
+  const resetToken = crypto.randomInt(100000, 999999).toString();
+  const expiresAt = Date.now() + 15 * 60 * 1000; // 15 mins expiry
+  const cleanId = identifier.trim().toLowerCase();
+
+  resetTokens.set(cleanId, {
+    token: resetToken,
+    expiresAt,
+    userId: user.id,
+    userEmail: user.email
+  });
+
+  // If user has an email, dispatch real reset email via configured SMTP
+  let emailDispatched = false;
+  if (user.email) {
+    try {
+      await otpService.dispatchPasswordResetEmail(user.email, user.name, resetToken);
+      emailDispatched = true;
+    } catch (err) {
+      console.error("[PASSWORD RESET EMAIL ERROR]", err.message);
+      return res.status(502).json({
+        error: `Failed to send password reset email via SMTP: ${err.message}. Please check SMTP configuration.`
+      });
     }
+  }
+
+  db.logAudit(user, "FORGOT_PASSWORD_REQUEST", `Password reset requested for ${user.email || user.phone}`);
+
+  const emailHint = user.email ? user.email.replace(/(.{2})(.*)(?=@)/, (gp1, gp2, gp3) => gp2 + "*".repeat(Math.max(gp3.length, 3))) : null;
+
+  res.json({
+    success: true,
+    message: emailDispatched 
+      ? `A 6-digit password reset verification code has been emailed to ${emailHint}. Valid for 15 minutes.`
+      : "Password reset request created. Please use your reset code to set a new password.",
+    emailHint,
+    expiresInMinutes: 15
+  });
+});
+
+// Reset Password - Verify Code and Update Password
+app.post('/api/auth/reset-password', (req, res) => {
+  const { identifier, resetCode, newPassword, confirmPassword } = req.body;
+
+  if (!identifier || !resetCode || !newPassword) {
+    return res.status(400).json({ error: "Identifier, reset code, and new password are required." });
+  }
+
+  if (newPassword !== confirmPassword) {
+    return res.status(400).json({ error: "New password and Confirm Password do not match." });
+  }
+
+  if (!validatePasswordStrength(newPassword)) {
+    return res.status(400).json({
+      error: "New password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number."
+    });
+  }
+
+  const cleanId = identifier.trim().toLowerCase();
+  const session = resetTokens.get(cleanId);
+
+  if (!session) {
+    return res.status(400).json({ error: "No active password reset request found. Please request a new code." });
+  }
+
+  if (Date.now() > session.expiresAt) {
+    resetTokens.delete(cleanId);
+    return res.status(400).json({ error: "Reset code has expired. Please request a new one." });
+  }
+
+  if (session.token !== resetCode.trim()) {
+    return res.status(400).json({ error: "Invalid reset code. Please check and try again." });
+  }
+
+  const data = db.read();
+  const user = data.users.find(u => u.id === session.userId);
+
+  if (!user) {
+    resetTokens.delete(cleanId);
+    return res.status(404).json({ error: "User account could not be found." });
+  }
+
+  // Update password securely with bcrypt
+  const salt = bcrypt.genSaltSync(10);
+  user.passwordHash = bcrypt.hashSync(newPassword, salt);
+  resetTokens.delete(cleanId);
+  db.write(data);
+
+  db.logAudit(user, "PASSWORD_RESET_SUCCESS", `Password was updated successfully for ${user.email || user.phone}`);
+
+  res.json({
+    success: true,
+    message: "Password reset successful! You can now sign in with your new password."
   });
 });
 

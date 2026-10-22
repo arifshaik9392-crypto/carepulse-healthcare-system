@@ -11,7 +11,7 @@
       "active": true,
       "room": "Room 101 (OPD Block A)",
       "createdAt": "2026-10-22T11:17:33.424Z",
-      "passwordHash": "$2b$10$SBgVf6aoTJ3HcXUoezq2Pey0QpqFC52gAXserEyKko.XOZpwH8Tf2"
+      "passwordHash": "$2b$10$Rh6MnbE92LOo9VlFQqt.LOUqIy.YVnO0Dw6.NRB.OQr6sUxOaLWV2"
     },
     {
       "id": "usr_doc_2",
@@ -24,7 +24,7 @@
       "active": true,
       "room": "Room 204 (Cath Suite)",
       "createdAt": "2026-10-22T11:17:33.428Z",
-      "passwordHash": "$2b$10$SBgVf6aoTJ3HcXUoezq2Pey0QpqFC52gAXserEyKko.XOZpwH8Tf2"
+      "passwordHash": "$2b$10$Rh6MnbE92LOo9VlFQqt.LOUqIy.YVnO0Dw6.NRB.OQr6sUxOaLWV2"
     },
     {
       "id": "usr_doc_3",
@@ -37,7 +37,7 @@
       "active": true,
       "room": "Room 108 (Joint Care)",
       "createdAt": "2026-10-22T11:17:33.428Z",
-      "passwordHash": "$2b$10$SBgVf6aoTJ3HcXUoezq2Pey0QpqFC52gAXserEyKko.XOZpwH8Tf2"
+      "passwordHash": "$2b$10$Rh6MnbE92LOo9VlFQqt.LOUqIy.YVnO0Dw6.NRB.OQr6sUxOaLWV2"
     },
     {
       "id": "usr_doc_4",
@@ -50,7 +50,7 @@
       "active": true,
       "room": "Room 102 (Child Wellness)",
       "createdAt": "2026-10-22T11:17:33.428Z",
-      "passwordHash": "$2b$10$SBgVf6aoTJ3HcXUoezq2Pey0QpqFC52gAXserEyKko.XOZpwH8Tf2"
+      "passwordHash": "$2b$10$Rh6MnbE92LOo9VlFQqt.LOUqIy.YVnO0Dw6.NRB.OQr6sUxOaLWV2"
     },
     {
       "id": "usr_doc_5",
@@ -63,7 +63,7 @@
       "active": true,
       "room": "Room 205 (Women Care)",
       "createdAt": "2026-10-22T11:17:33.428Z",
-      "passwordHash": "$2b$10$SBgVf6aoTJ3HcXUoezq2Pey0QpqFC52gAXserEyKko.XOZpwH8Tf2"
+      "passwordHash": "$2b$10$Rh6MnbE92LOo9VlFQqt.LOUqIy.YVnO0Dw6.NRB.OQr6sUxOaLWV2"
     },
     {
       "id": "usr_staff_1",
@@ -74,7 +74,7 @@
       "gender": "Male",
       "active": true,
       "createdAt": "2026-10-22T11:17:33.428Z",
-      "passwordHash": "$2b$10$SBgVf6aoTJ3HcXUoezq2Pey0QpqFC52gAXserEyKko.XOZpwH8Tf2"
+      "passwordHash": "$2b$10$Rh6MnbE92LOo9VlFQqt.LOUqIy.YVnO0Dw6.NRB.OQr6sUxOaLWV2"
     },
     {
       "id": "usr_pat_1",
@@ -86,14 +86,14 @@
       "age": 42,
       "active": true,
       "createdAt": "2026-10-22T11:17:33.428Z",
-      "passwordHash": "$2b$10$SBgVf6aoTJ3HcXUoezq2Pey0QpqFC52gAXserEyKko.XOZpwH8Tf2"
+      "passwordHash": "$2b$10$Rh6MnbE92LOo9VlFQqt.LOUqIy.YVnO0Dw6.NRB.OQr6sUxOaLWV2"
     },
     {
       "id": "usr_pat_1792684223681",
       "name": "Ananya Verma",
       "email": "pat_1792684223607@example.com",
       "phone": "",
-      "passwordHash": "$2b$10$SBgVf6aoTJ3HcXUoezq2Pey0QpqFC52gAXserEyKko.XOZpwH8Tf2",
+      "passwordHash": "$2b$10$Rh6MnbE92LOo9VlFQqt.LOUqIy.YVnO0Dw6.NRB.OQr6sUxOaLWV2",
       "role": "Patient",
       "gender": "Female",
       "age": 28,
@@ -117,12 +117,24 @@
       "name": "Shaik Arif",
       "email": "arifshaik9392@gmail.com",
       "phone": "",
-      "passwordHash": "$2b$10$Sx1t//A4aDYUgFA.Fyg76OXrxcVvW7AoC.tHpiBTaYfIU15A0dwjq",
+      "passwordHash": "$2b$10$Rh6MnbE92LOo9VlFQqt.LOUqIy.YVnO0Dw6.NRB.OQr6sUxOaLWV2",
       "role": "Patient",
       "gender": "Male",
       "age": 19,
       "active": true,
       "createdAt": "2026-10-22T15:54:25.329Z"
+    },
+    {
+      "id": "usr_pat_1792697665072",
+      "name": "Kavitha Reddy",
+      "email": "patient.test.1792697664944@example.com",
+      "phone": "+91 9817724551",
+      "passwordHash": "$2b$10$mvZP6Q0L2EbofzSaKuQhqeHnFQHwP1Co4YhFtl9.q06YFL7GsZ43i",
+      "role": "Patient",
+      "gender": "Female",
+      "age": 29,
+      "active": true,
+      "createdAt": "2026-10-22T19:34:25.072Z"
     }
   ],
   "doctors": [
@@ -200,6 +212,58 @@
       "estimatedWaitMins": 10,
       "delayMins": 0,
       "registeredAt": "2026-10-22T10:52:33.428Z",
+      "calledAt": null,
+      "completedAt": null,
+      "notifiedApproaching": false,
+      "outperoCallStatus": "Idle"
+    },
+    {
+      "id": "q_1792697798958",
+      "tokenId": "GM-102",
+      "patientId": "usr_pat_1",
+      "patientName": "Aarav Patel",
+      "patientPhone": "9876501234",
+      "patientEmail": "aarav@example.com",
+      "patientAge": 32,
+      "patientGender": "Male",
+      "doctorId": "doc_1",
+      "doctorName": "Dr. A. Sharma",
+      "speciality": "General Medicine",
+      "room": "Room 101 (OPD Block A)",
+      "type": "Walk-In",
+      "priority": "Regular",
+      "priorityScore": 0,
+      "status": "Waiting",
+      "position": 2,
+      "estimatedWaitMins": 20,
+      "delayMins": 0,
+      "registeredAt": "2026-10-22T19:36:38.958Z",
+      "calledAt": null,
+      "completedAt": null,
+      "notifiedApproaching": false,
+      "outperoCallStatus": "Idle"
+    },
+    {
+      "id": "q_1792697811486",
+      "tokenId": "GM-103",
+      "patientId": "usr_pat_1",
+      "patientName": "Aarav Patel",
+      "patientPhone": "9876501234",
+      "patientEmail": "aarav@example.com",
+      "patientAge": 32,
+      "patientGender": "Male",
+      "doctorId": "doc_1",
+      "doctorName": "Dr. A. Sharma",
+      "speciality": "General Medicine",
+      "room": "Room 101 (OPD Block A)",
+      "type": "Walk-In",
+      "priority": "Regular",
+      "priorityScore": 0,
+      "status": "Waiting",
+      "position": 3,
+      "estimatedWaitMins": 30,
+      "delayMins": 0,
+      "registeredAt": "2026-10-22T19:36:51.486Z",
       "calledAt": null,
       "completedAt": null,
       "notifiedApproaching": false,
@@ -415,6 +479,26 @@
   ],
   "notifications": [
     {
+      "id": "notif_1792697811486",
+      "recipientId": "usr_pat_1",
+      "recipientRole": "Patient",
+      "title": "OPD Token Confirmed",
+      "message": "Your token GM-103 for Dr. A. Sharma (Room 101 (OPD Block A)) has been generated. Est. wait: ~30 mins.",
+      "type": "token",
+      "read": false,
+      "timestamp": "2026-10-22T19:36:51.486Z"
+    },
+    {
+      "id": "notif_1792697798958",
+      "recipientId": "usr_pat_1",
+      "recipientRole": "Patient",
+      "title": "OPD Token Confirmed",
+      "message": "Your token GM-102 for Dr. A. Sharma (Room 101 (OPD Block A)) has been generated. Est. wait: ~20 mins.",
+      "type": "token",
+      "read": false,
+      "timestamp": "2026-10-22T19:36:38.958Z"
+    },
+    {
       "id": "notif_1",
       "recipientId": "usr_pat_1",
       "recipientRole": "Patient",
@@ -426,6 +510,114 @@
     }
   ],
   "auditLogs": [
+    {
+      "id": "log_1792697811487_266",
+      "actorId": "usr_pat_1",
+      "actorName": "Suresh Chandra",
+      "actorRole": "Patient",
+      "action": "REGISTER_TOKEN",
+      "details": "Token GM-103 generated for Aarav Patel",
+      "timestamp": "2026-10-22T19:36:51.487Z"
+    },
+    {
+      "id": "log_1792697811481_561",
+      "actorId": "usr_pat_1",
+      "actorName": "Suresh Chandra",
+      "actorRole": "Patient",
+      "action": "AUTH_LOGIN_SUCCESS",
+      "details": "Patient signed in successfully via password authentication.",
+      "timestamp": "2026-10-22T19:36:51.481Z"
+    },
+    {
+      "id": "log_1792697798959_766",
+      "actorId": "usr_pat_1",
+      "actorName": "Suresh Chandra",
+      "actorRole": "Patient",
+      "action": "REGISTER_TOKEN",
+      "details": "Token GM-102 generated for Aarav Patel",
+      "timestamp": "2026-10-22T19:36:38.959Z"
+    },
+    {
+      "id": "log_1792697798952_379",
+      "actorId": "usr_pat_1",
+      "actorName": "Suresh Chandra",
+      "actorRole": "Patient",
+      "action": "AUTH_LOGIN_SUCCESS",
+      "details": "Patient signed in successfully via password authentication.",
+      "timestamp": "2026-10-22T19:36:38.952Z"
+    },
+    {
+      "id": "log_1792697758548_159",
+      "actorId": "usr_staff_1",
+      "actorName": "Ramesh Receptionist",
+      "actorRole": "Staff",
+      "action": "AUTH_LOGIN_SUCCESS",
+      "details": "Staff signed in successfully via password authentication.",
+      "timestamp": "2026-10-22T19:35:58.548Z"
+    },
+    {
+      "id": "log_1792697712958_565",
+      "actorId": "usr_staff_1",
+      "actorName": "Ramesh Receptionist",
+      "actorRole": "Staff",
+      "action": "AUTH_LOGIN_SUCCESS",
+      "details": "Staff signed in successfully via password authentication.",
+      "timestamp": "2026-10-22T19:35:12.958Z"
+    },
+    {
+      "id": "log_1792697693317_857",
+      "actorId": "usr_pat_1",
+      "actorName": "Suresh Chandra",
+      "actorRole": "Patient",
+      "action": "FORGOT_PASSWORD_REQUEST",
+      "details": "Password reset requested for patient@carepulse.org",
+      "timestamp": "2026-10-22T19:34:53.317Z"
+    },
+    {
+      "id": "log_1792697669223_189",
+      "actorId": "usr_pat_1792697665072",
+      "actorName": "Kavitha Reddy",
+      "actorRole": "Patient",
+      "action": "FORGOT_PASSWORD_REQUEST",
+      "details": "Password reset requested for patient.test.1792697664944@example.com",
+      "timestamp": "2026-10-22T19:34:29.223Z"
+    },
+    {
+      "id": "log_1792697665459_217",
+      "actorId": "usr_doc_1",
+      "actorName": "Dr. A. Sharma",
+      "actorRole": "Doctor",
+      "action": "AUTH_LOGIN_SUCCESS",
+      "details": "Doctor signed in successfully via password authentication.",
+      "timestamp": "2026-10-22T19:34:25.459Z"
+    },
+    {
+      "id": "log_1792697665368_69",
+      "actorId": "usr_staff_1",
+      "actorName": "Ramesh Receptionist",
+      "actorRole": "Staff",
+      "action": "AUTH_LOGIN_SUCCESS",
+      "details": "Staff signed in successfully via password authentication.",
+      "timestamp": "2026-10-22T19:34:25.368Z"
+    },
+    {
+      "id": "log_1792697665180_221",
+      "actorId": "usr_pat_1792697665072",
+      "actorName": "Kavitha Reddy",
+      "actorRole": "Patient",
+      "action": "AUTH_LOGIN_SUCCESS",
+      "details": "Patient signed in successfully via password authentication.",
+      "timestamp": "2026-10-22T19:34:25.180Z"
+    },
+    {
+      "id": "log_1792697665074_762",
+      "actorId": "usr_pat_1792697665072",
+      "actorName": "Kavitha Reddy",
+      "actorRole": "Patient",
+      "action": "PATIENT_SELF_REGISTER",
+      "details": "New patient registered: Kavitha Reddy (patient.test.1792697664944@example.com)",
+      "timestamp": "2026-10-22T19:34:25.074Z"
+    },
     {
       "id": "log_1792693694195_228",
       "actorId": "usr_pat_1792684465329",
