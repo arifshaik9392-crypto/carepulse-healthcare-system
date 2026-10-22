@@ -57,7 +57,14 @@ const TRANSLATIONS = {
     statusCompleted: "Completed",
     statusSkipped: "Skipped / No-Show",
     nowServing: "NOW SERVING",
-    upNext: "UP NEXT"
+    upNext: "UP NEXT",
+    password: "Password",
+    confirmPassword: "Confirm Password",
+    rememberMe: "Remember me",
+    forgotPassword: "Forgot password?",
+    signIn: "Sign In",
+    createAccount: "Create an account",
+    registerAndEnter: "Register & Enter Portal"
   },
   te: {
     brandName: "కేర్‌పల్స్ (CarePulse)",

@@ -139,7 +139,7 @@
   <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
     <!-- ============================================================= -->
-    <!-- 1. AUTHENTICATION EXPERIENCE (3 SEPARATE ROLES & REAL OTP)   -->
+    <!-- 1. AUTHENTICATION EXPERIENCE (3 SEPARATE ROLES & PASSWORD)   -->
     <!-- ============================================================= -->
     <section id="authView" class="block max-w-xl mx-auto py-8">
       
@@ -150,8 +150,8 @@
           <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-royal-50 border border-royal-100 text-royal-600 mb-3 shadow-inner">
             <i data-lucide="shield-check" class="w-8 h-8 text-royal-600"></i>
           </div>
-          <h2 class="text-xl font-black text-slate-900" data-i18n="selectRolePrompt">Select Your Access Role</h2>
-          <p class="text-xs text-slate-500 mt-1">Enterprise Role-Enforced Secure OTP Authentication</p>
+          <h2 class="text-xl font-black text-slate-900" id="authTitle" data-i18n="selectRolePrompt">Select Your Access Role</h2>
+          <p class="text-xs text-slate-500 mt-1" id="authSubtitle">Enterprise Role-Enforced Secure Password Authentication</p>
         </div>
 
         <!-- 3 Specific Role Cards -->
@@ -178,82 +178,138 @@
         <!-- Error Alert Banner -->
         <div id="authErrorBanner" class="hidden"></div>
 
-        <!-- Step 1: Identifier Entry -->
-        <div id="authStep1" class="space-y-4">
+        <!-- LOGIN FORM -->
+        <form id="authLoginForm" onsubmit="CarePulseApp.handleLogin(event)" class="space-y-4">
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5" data-i18n="emailOrPhone">
               Email Address or 10-Digit Mobile Number
             </label>
             <div class="relative">
               <i data-lucide="mail" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5"></i>
-              <input type="text" id="authIdentifier" placeholder="e.g. 9123456789 or name@example.com" class="w-full bg-cream-50 border border-slate-300 rounded-xl pl-10 pr-3 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-royal-600 focus:ring-2 focus:ring-royal-100 transition" />
+              <input type="text" id="loginIdentifier" required placeholder="e.g. 9123456789 or name@example.com" class="w-full bg-cream-50 border border-slate-300 rounded-xl pl-10 pr-3 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-royal-600 focus:ring-2 focus:ring-royal-100 transition" />
             </div>
-            <p class="text-[11px] text-slate-500 mt-1">Real OTP verification via verified email or mobile SMS provider.</p>
-          </div>
-
-          <!-- Patient Self-Registration Details (Appears only for Patient if new) -->
-          <div id="patientRegFields" class="space-y-3 pt-2 border-t border-slate-100">
-            <span class="text-xs font-bold text-royal-600 block uppercase tracking-wider">Patient Profile Details</span>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label class="block text-[11px] font-bold text-slate-600 mb-1" data-i18n="fullName">Full Name</label>
-                <input type="text" id="regPatientName" placeholder="e.g. Ramesh Chandra" class="w-full bg-cream-50 border border-slate-300 rounded-lg px-3 py-2 text-xs" />
-              </div>
-              <div class="grid grid-cols-2 gap-2">
-                <div>
-                  <label class="block text-[11px] font-bold text-slate-600 mb-1" data-i18n="age">Age</label>
-                  <input type="number" id="regPatientAge" min="1" max="120" value="35" class="w-full bg-cream-50 border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono-code" />
-                </div>
-                <div>
-                  <label class="block text-[11px] font-bold text-slate-600 mb-1" data-i18n="gender">Gender</label>
-                  <select id="regPatientGender" class="w-full bg-cream-50 border border-slate-300 rounded-lg px-2 py-2 text-xs">
-                    <option value="Male" data-i18n="male">Male</option>
-                    <option value="Female" data-i18n="female">Female</option>
-                    <option value="Transgender" data-i18n="transgender">Transgender</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Provisioned Credentials Quick Helper (For Testing) -->
-          <div class="bg-royal-50/70 border border-royal-200/80 rounded-xl p-3 text-[11px] text-slate-600 space-y-1">
-            <strong class="text-royal-700 block font-bold">Authorized Test Accounts (Provisioned in DB):</strong>
-            <p>&bull; <strong>Doctor:</strong> dr.sharma@carepulse.org or 9876543210</p>
-            <p>&bull; <strong>Staff:</strong> staff@carepulse.org or 9888877777</p>
-            <p>&bull; <strong>Patient:</strong> patient@carepulse.org or 9123456789 (or enter any new number to self-register)</p>
-          </div>
-
-          <button type="button" onclick="CarePulseApp.requestOtp()" id="btnRequestOtp" class="w-full py-3.5 bg-royal-600 hover:bg-royal-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-royal-600/25 flex items-center justify-center gap-2 transition active:scale-98">
-            <i data-lucide="key" class="w-4 h-4"></i> <span data-i18n="requestOtp">Send Secure OTP</span>
-          </button>
-        </div>
-
-        <!-- Step 2: OTP Verification -->
-        <div id="authStep2" class="space-y-4 hidden">
-          <div class="bg-royal-50 border border-royal-200 rounded-xl p-3 flex items-center justify-between text-xs">
-            <div>
-              <span class="text-slate-500 block">OTP Dispatched to:</span>
-              <strong id="otpTargetDisplay" class="font-mono-code text-royal-700 text-sm">9123456789</strong>
-            </div>
-            <button onclick="CarePulseApp.backToStep1()" class="text-xs text-royal-600 hover:underline font-semibold">Change</button>
           </div>
 
           <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5" data-i18n="enterOtp">
-              Enter 6-Digit OTP
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5" data-i18n="password">
+              Password
             </label>
-            <input type="text" id="authOtpCode" maxlength="6" placeholder="&bull; &bull; &bull; &bull; &bull; &bull;" class="w-full text-center tracking-widest text-2xl font-mono-code bg-cream-50 border border-slate-300 rounded-xl py-3 text-slate-900 focus:outline-none focus:border-royal-600 focus:ring-2 focus:ring-royal-100" />
-            <div class="flex items-center justify-between mt-1 text-[11px] text-slate-500">
-              <span id="otpTimerDisplay">Expires in: 5m 00s</span>
-              <button type="button" id="btnResendOtp" onclick="CarePulseApp.requestOtp()" class="text-royal-600 font-bold hover:underline" data-i18n="resendOtp">Resend OTP</button>
+            <div class="relative">
+              <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5"></i>
+              <input type="password" id="loginPassword" required placeholder="Enter your password" class="w-full bg-cream-50 border border-slate-300 rounded-xl pl-10 pr-10 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-royal-600 focus:ring-2 focus:ring-royal-100 transition" />
+              <button type="button" onclick="CarePulseApp.togglePasswordVisibility('loginPassword', this)" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 focus:outline-none p-0.5" title="Show/Hide Password">
+                <i data-lucide="eye" class="w-4 h-4"></i>
+              </button>
             </div>
           </div>
 
-          <button type="button" onclick="CarePulseApp.verifyOtp()" id="btnVerifyOtp" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition active:scale-98">
-            <i data-lucide="check-circle" class="w-4 h-4"></i> <span data-i18n="verifyOtp">Verify & Enter</span>
+          <div class="flex items-center justify-between text-xs text-slate-600 pt-1">
+            <label class="flex items-center space-x-2 cursor-pointer select-none">
+              <input type="checkbox" id="loginRememberMe" class="rounded border-slate-300 text-royal-600 focus:ring-royal-500" />
+              <span data-i18n="rememberMe">Remember me</span>
+            </label>
+            <button type="button" onclick="CarePulseApp.openForgotPasswordModal()" class="text-royal-600 hover:underline font-semibold" data-i18n="forgotPassword">
+              Forgot password?
+            </button>
+          </div>
+
+          <button type="submit" id="btnLogin" class="w-full py-3.5 bg-royal-600 hover:bg-royal-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-royal-600/25 flex items-center justify-center gap-2 transition active:scale-98">
+            <i data-lucide="log-in" class="w-4 h-4"></i> <span id="btnLoginText" data-i18n="signIn">Sign In as Patient</span>
           </button>
-        </div>
+
+          <!-- Patient Self-Registration Prompt (Visible only when Patient tab is active) -->
+          <div id="patientRegisterPrompt" class="text-center pt-2 border-t border-slate-100">
+            <p class="text-xs text-slate-600">
+              New patient? 
+              <button type="button" onclick="CarePulseApp.showRegisterForm()" class="text-royal-600 font-bold hover:underline ml-1" data-i18n="createAccount">
+                Create an account
+              </button>
+            </p>
+          </div>
+
+          <!-- Provisioned Credentials Quick Helper (For Testing) -->
+          <div class="bg-royal-50/70 border border-royal-200/80 rounded-xl p-3 text-[11px] text-slate-600 space-y-1 mt-3">
+            <strong class="text-royal-700 block font-bold">Authorized Test Accounts (Password: CarePulse@123):</strong>
+            <p>&bull; <strong>Doctor:</strong> dr.sharma@carepulse.org or 9876543210</p>
+            <p>&bull; <strong>Staff:</strong> staff@carepulse.org or 9888877777</p>
+            <p>&bull; <strong>Patient:</strong> patient@carepulse.org or 9123456789</p>
+          </div>
+        </form>
+
+        <!-- PATIENT REGISTRATION FORM (Only for Patient) -->
+        <form id="authRegisterForm" onsubmit="CarePulseApp.handleRegister(event)" class="space-y-4 hidden">
+          <div class="flex items-center justify-between border-b border-cream-200 pb-2 mb-2">
+            <h3 class="text-sm font-bold text-royal-700 uppercase tracking-wider">Patient Self-Registration</h3>
+            <button type="button" onclick="CarePulseApp.showLoginForm()" class="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 font-semibold">
+              <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Back to Login
+            </button>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1" data-i18n="fullName">
+              Full Name *
+            </label>
+            <input type="text" id="regName" required placeholder="e.g. Ramesh Chandra" class="w-full bg-cream-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-royal-600" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1" data-i18n="emailOrPhone">
+              Email Address or 10-Digit Mobile *
+            </label>
+            <input type="text" id="regIdentifier" required placeholder="e.g. 9876543210 or ramesh@example.com" class="w-full bg-cream-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-royal-600" />
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1" data-i18n="age">Age</label>
+              <input type="number" id="regAge" min="1" max="120" value="35" class="w-full bg-cream-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-mono-code focus:outline-none focus:border-royal-600" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1" data-i18n="gender">Gender</label>
+              <select id="regGender" class="w-full bg-cream-50 border border-slate-300 rounded-xl px-2 py-2.5 text-sm focus:outline-none focus:border-royal-600">
+                <option value="Male" data-i18n="male">Male</option>
+                <option value="Female" data-i18n="female">Female</option>
+                <option value="Transgender" data-i18n="transgender">Transgender</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1" data-i18n="password">
+              Password *
+            </label>
+            <div class="relative">
+              <input type="password" id="regPassword" required placeholder="Create strong password" class="w-full bg-cream-50 border border-slate-300 rounded-xl pl-3 pr-10 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-royal-600" />
+              <button type="button" onclick="CarePulseApp.togglePasswordVisibility('regPassword', this)" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-none p-0.5">
+                <i data-lucide="eye" class="w-4 h-4"></i>
+              </button>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-1">Must contain at least 8 characters, an uppercase letter, a lowercase letter, and a number.</p>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1" data-i18n="confirmPassword">
+              Confirm Password *
+            </label>
+            <div class="relative">
+              <input type="password" id="regConfirmPassword" required placeholder="Re-enter password" class="w-full bg-cream-50 border border-slate-300 rounded-xl pl-3 pr-10 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-royal-600" />
+              <button type="button" onclick="CarePulseApp.togglePasswordVisibility('regConfirmPassword', this)" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-none p-0.5">
+                <i data-lucide="eye" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" id="btnRegister" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition active:scale-98">
+            <i data-lucide="user-plus" class="w-4 h-4"></i> <span data-i18n="registerAndEnter">Register & Enter Portal</span>
+          </button>
+
+          <p class="text-center text-xs text-slate-600">
+            Already have an account? 
+            <button type="button" onclick="CarePulseApp.showLoginForm()" class="text-royal-600 font-bold hover:underline ml-1" data-i18n="signIn">
+              Sign In
+            </button>
+          </p>
+        </form>
 
       </div>
 
@@ -596,6 +652,73 @@
         <button onclick="CarePulseApp.executeTokenDownload()" class="px-5 py-2 bg-royal-600 hover:bg-royal-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md">
           <i data-lucide="download" class="w-3.5 h-3.5"></i> <span data-i18n="downloadToken">Download Token</span>
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Forgot / Reset Password Modal -->
+  <div id="forgotPasswordModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl border border-cream-300 max-w-md w-full p-6 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-cream-200 pb-3 mb-4">
+        <h3 class="text-base font-black text-slate-900 flex items-center gap-2">
+          <i data-lucide="key-round" class="w-5 h-5 text-royal-600"></i> Password Recovery
+        </h3>
+        <button onclick="CarePulseApp.closeModal('forgotPasswordModal')" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div id="forgotErrorBanner" class="hidden"></div>
+
+      <!-- Step 1: Request Code -->
+      <div id="forgotStep1" class="space-y-4">
+        <p class="text-xs text-slate-600">Enter your registered email address or mobile phone number to receive a secure password reset code.</p>
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Email or Phone Number</label>
+          <input type="text" id="forgotIdentifier" placeholder="e.g. name@example.com or 9876543210" class="w-full bg-cream-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-royal-600" />
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onclick="CarePulseApp.closeModal('forgotPasswordModal')" class="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-cream-100 rounded-xl">Cancel</button>
+          <button type="button" onclick="CarePulseApp.requestPasswordReset()" id="btnRequestReset" class="px-5 py-2.5 bg-royal-600 hover:bg-royal-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md transition">Request Reset Code</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Enter Code & New Password -->
+      <div id="forgotStep2" class="space-y-4 hidden">
+        <div class="bg-royal-50 border border-royal-200 rounded-xl p-3 text-xs text-slate-600">
+          Reset code issued for: <strong id="forgotTargetDisplay" class="font-mono-code text-royal-700"></strong>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">6-Digit Reset Code</label>
+          <input type="text" id="forgotResetCode" maxlength="6" placeholder="Enter 6-digit code" class="w-full bg-cream-50 border border-slate-300 rounded-xl px-3 py-2.5 text-center font-mono-code text-base tracking-widest text-slate-800 focus:outline-none focus:border-royal-600" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">New Password</label>
+          <div class="relative">
+            <input type="password" id="forgotNewPassword" placeholder="Enter new strong password" class="w-full bg-cream-50 border border-slate-300 rounded-xl pl-3 pr-10 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-royal-600" />
+            <button type="button" onclick="CarePulseApp.togglePasswordVisibility('forgotNewPassword', this)" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 p-0.5">
+              <i data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+          </div>
+          <p class="text-[10px] text-slate-500 mt-0.5">At least 8 chars with uppercase, lowercase, and number.</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Confirm New Password</label>
+          <div class="relative">
+            <input type="password" id="forgotConfirmPassword" placeholder="Confirm new password" class="w-full bg-cream-50 border border-slate-300 rounded-xl pl-3 pr-10 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-royal-600" />
+            <button type="button" onclick="CarePulseApp.togglePasswordVisibility('forgotConfirmPassword', this)" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 p-0.5">
+              <i data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-2">
+          <button type="button" onclick="CarePulseApp.backToForgotStep1()" class="text-xs text-slate-500 hover:underline font-semibold">Change Identifier</button>
+          <button type="button" onclick="CarePulseApp.submitPasswordReset()" id="btnSubmitReset" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md transition">Update Password</button>
+        </div>
       </div>
     </div>
   </div>

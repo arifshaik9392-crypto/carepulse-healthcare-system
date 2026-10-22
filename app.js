@@ -84,7 +84,7 @@ class CarePulseClient {
   }
 
   // ==========================================================================
-  // AUTHENTICATION & THREE SEPARATE ROLES
+  // AUTHENTICATION & THREE SEPARATE ROLES (PASSWORD-BASED)
   // ==========================================================================
   selectAuthRole(role) {
     this.selectedAuthRole = role;
@@ -99,157 +99,208 @@ class CarePulseClient {
       }
     });
 
-    // Patient reg details only appear if Patient role selected
-    const regFields = document.getElementById('patientRegFields');
-    if (regFields) {
-      if (role === 'Patient') regFields.classList.remove('hidden');
-      else regFields.classList.add('hidden');
+    const titleEl = document.getElementById('authTitle');
+    const subtitleEl = document.getElementById('authSubtitle');
+    const btnLoginText = document.getElementById('btnLoginText');
+    const regPrompt = document.getElementById('patientRegisterPrompt');
+
+    if (role === 'Patient') {
+      if (titleEl) titleEl.textContent = "Patient Portal Sign In";
+      if (subtitleEl) subtitleEl.textContent = "Book OPD appointments, track live tokens, and pharmacy orders";
+      if (btnLoginText) btnLoginText.textContent = "Sign In as Patient";
+      if (regPrompt) regPrompt.classList.remove('hidden');
+    } else if (role === 'Staff') {
+      if (titleEl) titleEl.textContent = "Staff & Receptionist Portal";
+      if (subtitleEl) subtitleEl.textContent = "Authorized OPD queue triage, pharmacy dispatch & blood bank";
+      if (btnLoginText) btnLoginText.textContent = "Sign In as Staff";
+      if (regPrompt) regPrompt.classList.add('hidden');
+    } else if (role === 'Doctor') {
+      if (titleEl) titleEl.textContent = "Doctor Consultation Suite";
+      if (subtitleEl) subtitleEl.textContent = "Clinical consultations, assigned queues & doctor availability";
+      if (btnLoginText) btnLoginText.textContent = "Sign In as Doctor";
+      if (regPrompt) regPrompt.classList.add('hidden');
+    }
+
+    // Always ensure login form is shown when switching roles
+    this.showLoginForm();
+    this.clearAuthError();
+    if (window.lucide) lucide.createIcons();
+  }
+
+  showLoginForm() {
+    const loginForm = document.getElementById('authLoginForm');
+    const regForm = document.getElementById('authRegisterForm');
+    if (loginForm) loginForm.classList.remove('hidden');
+    if (regForm) regForm.classList.add('hidden');
+    this.clearAuthError();
+    if (window.lucide) lucide.createIcons();
+  }
+
+  showRegisterForm() {
+    if (this.selectedAuthRole !== 'Patient') {
+      this.selectAuthRole('Patient');
+    }
+    const loginForm = document.getElementById('authLoginForm');
+    const regForm = document.getElementById('authRegisterForm');
+    if (loginForm) loginForm.classList.add('hidden');
+    if (regForm) regForm.classList.remove('hidden');
+    this.clearAuthError();
+    if (window.lucide) lucide.createIcons();
+  }
+
+  togglePasswordVisibility(inputId, btnEl) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+
+    if (btnEl) {
+      btnEl.innerHTML = `<i data-lucide="${isPassword ? 'eye-off' : 'eye'}" class="w-4 h-4"></i>`;
+      if (window.lucide) lucide.createIcons();
     }
   }
 
-  async requestOtp() {
-    const identifier = document.getElementById('authIdentifier').value.trim();
-    const btnRequest = document.getElementById('btnRequestOtp');
+  clearAuthError() {
     const errorBanner = document.getElementById('authErrorBanner');
     if (errorBanner) {
-      errorBanner.classList.add('hidden');
+      errorBanner.className = 'hidden';
       errorBanner.textContent = '';
     }
+  }
 
-    if (!identifier) {
-      this.showToast("Please enter your email or 10-digit mobile number.", "danger");
+  showAuthError(message) {
+    const errorBanner = document.getElementById('authErrorBanner');
+    if (errorBanner) {
+      errorBanner.className = "p-3 rounded-xl text-xs bg-red-100 text-red-800 border border-red-300 block mb-4";
+      errorBanner.textContent = message;
+    }
+    this.showToast(message, "danger");
+  }
+
+  async handleLogin(e) {
+    e.preventDefault();
+    this.clearAuthError();
+
+    const identifier = document.getElementById('loginIdentifier')?.value.trim();
+    const password = document.getElementById('loginPassword')?.value;
+    const rememberMe = document.getElementById('loginRememberMe')?.checked;
+    const btn = document.getElementById('btnLogin');
+
+    if (!identifier || !password) {
+      this.showAuthError("Please enter both email/phone and password.");
       return;
     }
 
-    // Input validation: Must be either valid email or valid phone
-    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
-    const isPhone = /^[0-9]{10}$/.test(identifier) || /^\+[0-9]{10,13}$/.test(identifier);
-
-    if (!isEmail && !isPhone) {
-      this.showToast("Please enter a valid email address or 10-digit mobile number.", "danger");
-      return;
-    }
-
-    const regName = document.getElementById('regPatientName')?.value.trim();
-    const regAge = document.getElementById('regPatientAge')?.value;
-    const regGender = document.getElementById('regPatientGender')?.value;
-
-    const payload = {
-      identifier,
-      targetRole: this.selectedAuthRole,
-      profileData: this.selectedAuthRole === 'Patient' ? { name: regName, age: regAge, gender: regGender } : null
-    };
-
-    if (btnRequest) {
-      btnRequest.disabled = true;
-      btnRequest.innerHTML = `<span class="inline-block animate-spin mr-2">&#9696;</span> Sending Secure OTP...`;
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<span class="inline-block animate-spin mr-2">&#9696;</span> Authenticating...`;
     }
 
     try {
-      const res = await fetch('/api/auth/request-otp', {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          identifier,
+          password,
+          targetRole: this.selectedAuthRole
+        })
       });
+
       const data = await res.json();
 
       if (!res.ok) {
-        if (errorBanner) {
-          errorBanner.className = "p-3 rounded-xl text-xs bg-red-100 text-red-800 border border-red-300 block mb-4";
-          errorBanner.textContent = data.error || "Failed to dispatch OTP";
-        }
-        this.showToast(data.error || "Failed to dispatch OTP", "danger");
+        this.showAuthError(data.error || "Login failed. Please check your credentials.");
         return;
       }
 
-      this.showToast(data.message || `OTP dispatched successfully via ${data.channel}.`, "success");
-      
-      // Move to Step 2
-      document.getElementById('authStep1').classList.add('hidden');
-      document.getElementById('authStep2').classList.remove('hidden');
-      document.getElementById('otpTargetDisplay').textContent = identifier;
-      document.getElementById('authOtpCode').value = '';
-      document.getElementById('authOtpCode').focus();
-      
-      this.startOtpTimer(data.expiresInSeconds || 300);
+      this.token = data.token;
+      this.user = data.user;
+
+      if (rememberMe) {
+        localStorage.setItem('carepulse_remember', 'true');
+      } else {
+        localStorage.removeItem('carepulse_remember');
+      }
+
+      localStorage.setItem('carepulse_jwt', data.token);
+      localStorage.setItem('carepulse_user', JSON.stringify(data.user));
+
+      this.showToast(`Signed in successfully! Welcome, ${data.user.name}`, "success");
+      this.renderAuthHeader();
+      this.routeToRoleDashboard();
     } catch (err) {
-      this.showToast("Error connecting to authentication server. Please check your network.", "danger");
+      this.showAuthError("Unable to connect to authentication server. Please check your network.");
     } finally {
-      if (btnRequest) {
-        btnRequest.disabled = false;
-        btnRequest.innerHTML = `<i data-lucide="key" class="w-4 h-4"></i> <span data-i18n="requestOtp">Send Secure OTP</span>`;
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<i data-lucide="log-in" class="w-4 h-4"></i> <span id="btnLoginText">${document.getElementById('btnLoginText')?.textContent || 'Sign In'}</span>`;
         if (window.lucide) lucide.createIcons();
       }
     }
   }
 
-  startOtpTimer(seconds) {
-    if (this.otpTimerInterval) clearInterval(this.otpTimerInterval);
-    let left = seconds;
-    const timerEl = document.getElementById('otpTimerDisplay');
-    const resendBtn = document.getElementById('btnResendOtp');
-    if (resendBtn) {
-      resendBtn.disabled = true;
-      resendBtn.classList.add('opacity-50', 'cursor-not-allowed');
-    }
+  async handleRegister(e) {
+    e.preventDefault();
+    this.clearAuthError();
 
-    this.otpTimerInterval = setInterval(() => {
-      left--;
-      const m = Math.floor(left / 60);
-      const s = left % 60;
-      if (timerEl) timerEl.textContent = `Expires in: ${m}m ${s < 10 ? '0' : ''}${s}s`;
+    const name = document.getElementById('regName')?.value.trim();
+    const identifier = document.getElementById('regIdentifier')?.value.trim();
+    const age = document.getElementById('regAge')?.value;
+    const gender = document.getElementById('regGender')?.value;
+    const password = document.getElementById('regPassword')?.value;
+    const confirmPassword = document.getElementById('regConfirmPassword')?.value;
+    const btn = document.getElementById('btnRegister');
 
-      if (left <= 0) {
-        clearInterval(this.otpTimerInterval);
-        if (timerEl) timerEl.textContent = "OTP expired. Please request a new code.";
-        if (resendBtn) {
-          resendBtn.disabled = false;
-          resendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-        }
-      }
-    }, 1000);
-  }
-
-  backToStep1() {
-    if (this.otpTimerInterval) clearInterval(this.otpTimerInterval);
-    document.getElementById('authStep2').classList.add('hidden');
-    document.getElementById('authStep1').classList.remove('hidden');
-  }
-
-  async verifyOtp() {
-    const identifier = document.getElementById('authIdentifier').value.trim();
-    const otpCode = document.getElementById('authOtpCode').value.trim();
-    const btnVerify = document.getElementById('btnVerifyOtp');
-
-    if (!otpCode || otpCode.length < 6) {
-      this.showToast("Please enter the complete 6-digit OTP code.", "danger");
+    if (!name || !identifier || !password) {
+      this.showAuthError("Please fill in all required fields.");
       return;
     }
 
-    const regName = document.getElementById('regPatientName')?.value.trim();
-    const regAge = document.getElementById('regPatientAge')?.value;
-    const regGender = document.getElementById('regPatientGender')?.value;
+    // Email or 10-digit phone validation
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+    const isPhone = /^[0-9]{10}$/.test(identifier) || /^\+[0-9]{10,13}$/.test(identifier);
 
-    if (btnVerify) {
-      btnVerify.disabled = true;
-      btnVerify.innerHTML = `<span class="inline-block animate-spin mr-2">&#9696;</span> Verifying Code...`;
+    if (!isEmail && !isPhone) {
+      this.showAuthError("Please enter a valid email address or 10-digit mobile number.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      this.showAuthError("Passwords do not match. Please verify.");
+      return;
+    }
+
+    // Strong password check: 8+ chars, 1 uppercase, 1 lowercase, 1 number
+    const strongRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (!strongRegex.test(password)) {
+      this.showAuthError("Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number.");
+      return;
+    }
+
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<span class="inline-block animate-spin mr-2">&#9696;</span> Creating Account...`;
     }
 
     try {
-      const res = await fetch('/api/auth/verify-otp', {
+      const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          name,
           identifier,
-          otpCode,
-          targetRole: this.selectedAuthRole,
-          registerDetails: { name: regName, age: regAge, gender: regGender }
+          age,
+          gender,
+          password,
+          confirmPassword
         })
       });
+
       const data = await res.json();
 
       if (!res.ok) {
-        this.showToast(data.error || "OTP verification failed", "danger");
+        this.showAuthError(data.error || "Registration failed.");
         return;
       }
 
@@ -258,16 +309,197 @@ class CarePulseClient {
       localStorage.setItem('carepulse_jwt', data.token);
       localStorage.setItem('carepulse_user', JSON.stringify(data.user));
 
-      this.showToast(`Verified! Welcome ${data.user.name} (${data.user.role})`, "success");
+      this.showToast(`Registration complete! Welcome to CarePulse, ${data.user.name}.`, "success");
       this.renderAuthHeader();
       this.routeToRoleDashboard();
-    } catch (e) {
-      this.showToast("Authentication server error.", "danger");
+    } catch (err) {
+      this.showAuthError("Connection error during registration.");
     } finally {
-      if (btnVerify) {
-        btnVerify.disabled = false;
-        btnVerify.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4"></i> <span data-i18n="verifyOtp">Verify & Enter</span>`;
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<i data-lucide="user-plus" class="w-4 h-4"></i> <span data-i18n="registerAndEnter">Register & Enter Portal</span>`;
         if (window.lucide) lucide.createIcons();
+      }
+    }
+  }
+
+  // ==========================================================================
+  // FORGOT & RESET PASSWORD WORKFLOW
+  // ==========================================================================
+  openForgotPasswordModal() {
+    const modal = document.getElementById('forgotPasswordModal');
+    const step1 = document.getElementById('forgotStep1');
+    const step2 = document.getElementById('forgotStep2');
+    const errorBanner = document.getElementById('forgotErrorBanner');
+    const input = document.getElementById('forgotIdentifier');
+
+    if (step1) step1.classList.remove('hidden');
+    if (step2) step2.classList.add('hidden');
+    if (errorBanner) {
+      errorBanner.className = 'hidden';
+      errorBanner.textContent = '';
+    }
+
+    const currentLoginId = document.getElementById('loginIdentifier')?.value.trim();
+    if (input && currentLoginId) {
+      input.value = currentLoginId;
+    }
+
+    if (modal) modal.classList.remove('hidden');
+    if (window.lucide) lucide.createIcons();
+  }
+
+  backToForgotStep1() {
+    const step1 = document.getElementById('forgotStep1');
+    const step2 = document.getElementById('forgotStep2');
+    if (step1) step1.classList.remove('hidden');
+    if (step2) step2.classList.add('hidden');
+  }
+
+  async requestPasswordReset() {
+    const identifier = document.getElementById('forgotIdentifier')?.value.trim();
+    const btn = document.getElementById('btnRequestReset');
+    const errorBanner = document.getElementById('forgotErrorBanner');
+
+    if (!identifier) {
+      if (errorBanner) {
+        errorBanner.className = "p-3 rounded-xl text-xs bg-red-100 text-red-800 border border-red-300 block mb-3";
+        errorBanner.textContent = "Please enter your registered email or phone number.";
+      }
+      return;
+    }
+
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<span class="inline-block animate-spin mr-2">&#9696;</span> Requesting...`;
+    }
+
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (errorBanner) {
+          errorBanner.className = "p-3 rounded-xl text-xs bg-red-100 text-red-800 border border-red-300 block mb-3";
+          errorBanner.textContent = data.error || "Password reset request failed.";
+        }
+        return;
+      }
+
+      // Transition to Step 2
+      document.getElementById('forgotStep1')?.classList.add('hidden');
+      document.getElementById('forgotStep2')?.classList.remove('hidden');
+      const targetDisplay = document.getElementById('forgotTargetDisplay');
+      if (targetDisplay) targetDisplay.textContent = identifier;
+
+      // In testing environment, automatically fill or hint the reset code
+      if (data.resetCode) {
+        const codeInput = document.getElementById('forgotResetCode');
+        if (codeInput) codeInput.value = data.resetCode;
+      }
+
+      if (errorBanner) {
+        errorBanner.className = "p-3 rounded-xl text-xs bg-emerald-100 text-emerald-800 border border-emerald-300 block mb-3";
+        errorBanner.textContent = `${data.message} ${data.resetCode ? `(Demonstration Code: ${data.resetCode})` : ''}`;
+      }
+
+      this.showToast("Reset verification code generated.", "success");
+    } catch (e) {
+      if (errorBanner) {
+        errorBanner.className = "p-3 rounded-xl text-xs bg-red-100 text-red-800 border border-red-300 block mb-3";
+        errorBanner.textContent = "Server connection error.";
+      }
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = "Request Reset Code";
+      }
+    }
+  }
+
+  async submitPasswordReset() {
+    const identifier = document.getElementById('forgotIdentifier')?.value.trim();
+    const resetCode = document.getElementById('forgotResetCode')?.value.trim();
+    const newPassword = document.getElementById('forgotNewPassword')?.value;
+    const confirmPassword = document.getElementById('forgotConfirmPassword')?.value;
+    const btn = document.getElementById('btnSubmitReset');
+    const errorBanner = document.getElementById('forgotErrorBanner');
+
+    if (!resetCode || !newPassword) {
+      if (errorBanner) {
+        errorBanner.className = "p-3 rounded-xl text-xs bg-red-100 text-red-800 border border-red-300 block mb-3";
+        errorBanner.textContent = "Please fill in all fields.";
+      }
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      if (errorBanner) {
+        errorBanner.className = "p-3 rounded-xl text-xs bg-red-100 text-red-800 border border-red-300 block mb-3";
+        errorBanner.textContent = "Passwords do not match.";
+      }
+      return;
+    }
+
+    const strongRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (!strongRegex.test(newPassword)) {
+      if (errorBanner) {
+        errorBanner.className = "p-3 rounded-xl text-xs bg-red-100 text-red-800 border border-red-300 block mb-3";
+        errorBanner.textContent = "Password must have at least 8 characters with 1 uppercase, 1 lowercase, and 1 number.";
+      }
+      return;
+    }
+
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<span class="inline-block animate-spin mr-2">&#9696;</span> Updating...`;
+    }
+
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifier,
+          resetCode,
+          newPassword,
+          confirmPassword
+        })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (errorBanner) {
+          errorBanner.className = "p-3 rounded-xl text-xs bg-red-100 text-red-800 border border-red-300 block mb-3";
+          errorBanner.textContent = data.error || "Password reset failed.";
+        }
+        return;
+      }
+
+      this.closeModal('forgotPasswordModal');
+      this.showToast("Password updated successfully! You can now log in.", "success");
+
+      // Pre-fill login form
+      const loginId = document.getElementById('loginIdentifier');
+      const loginPass = document.getElementById('loginPassword');
+      if (loginId) loginId.value = identifier;
+      if (loginPass) {
+        loginPass.value = newPassword;
+        loginPass.focus();
+      }
+    } catch (e) {
+      if (errorBanner) {
+        errorBanner.className = "p-3 rounded-xl text-xs bg-red-100 text-red-800 border border-red-300 block mb-3";
+        errorBanner.textContent = "Server connection error.";
+      }
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = "Update Password";
       }
     }
   }
@@ -1434,14 +1666,18 @@ Track live queue at: carepulse.org
         
         <div class="space-y-4 text-xs">
           <div class="p-4 bg-cream-50 rounded-2xl border border-cream-200 space-y-2">
-            <strong class="text-slate-800 block text-sm">Real OTP Authentication Engine</strong>
+            <strong class="text-slate-800 block text-sm">Secure Authentication Engine</strong>
             <div class="flex justify-between">
-              <span>Email OTP Provider:</span>
-              <strong class="${status.otpStatus.emailOtpConfigured ? 'text-emerald-600' : 'text-amber-600'} font-mono-code">${status.otpStatus.emailOtpConfigured ? 'Configured (SMTP)' : 'Needs SMTP Configuration'}</strong>
+              <span>Authentication Mode:</span>
+              <strong class="text-emerald-600 font-mono-code">Password-Based (Bcrypt)</strong>
             </div>
             <div class="flex justify-between">
-              <span>Phone SMS OTP Provider:</span>
-              <strong class="${status.otpStatus.phoneOtpConfigured ? 'text-emerald-600' : 'text-amber-600'} font-mono-code">${status.otpStatus.phoneOtpConfigured ? 'Configured' : 'Needs Firebase/Twilio Configuration'}</strong>
+              <span>Portals Supported:</span>
+              <strong class="text-royal-600 font-mono-code">Patient, Staff, Doctor</strong>
+            </div>
+            <div class="flex justify-between">
+              <span>Password Security:</span>
+              <strong class="text-slate-700 font-mono-code">8+ chars, upper/lower/number</strong>
             </div>
           </div>
 
