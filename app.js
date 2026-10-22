@@ -84,7 +84,7 @@ class CarePulseClient {
   }
 
   // ==========================================================================
-  // AUTHENTICATION & THREE SEPARATE ROLES (PASSWORD-BASED)
+  // AUTHENTICATION & THREE SEPARATE ROLES (REAL OTP-BASED)
   // ==========================================================================
   selectAuthRole(role) {
     this.selectedAuthRole = role;
@@ -101,63 +101,120 @@ class CarePulseClient {
 
     const titleEl = document.getElementById('authTitle');
     const subtitleEl = document.getElementById('authSubtitle');
-    const btnLoginText = document.getElementById('btnLoginText');
-    const regPrompt = document.getElementById('patientRegisterPrompt');
+    const regFields = document.getElementById('patientRegFields');
 
     if (role === 'Patient') {
-      if (titleEl) titleEl.textContent = "Patient Portal Sign In";
-      if (subtitleEl) subtitleEl.textContent = "Book OPD appointments, track live tokens, and pharmacy orders";
-      if (btnLoginText) btnLoginText.textContent = "Sign In as Patient";
-      if (regPrompt) regPrompt.classList.remove('hidden');
+      if (titleEl) titleEl.textContent = "Patient Portal Login & Registration";
+      if (subtitleEl) subtitleEl.textContent = "Sign in or self-register via real Email or Phone SMS OTP";
+      if (regFields) regFields.classList.remove('hidden');
     } else if (role === 'Staff') {
       if (titleEl) titleEl.textContent = "Staff & Receptionist Portal";
       if (subtitleEl) subtitleEl.textContent = "Authorized OPD queue triage, pharmacy dispatch & blood bank";
-      if (btnLoginText) btnLoginText.textContent = "Sign In as Staff";
-      if (regPrompt) regPrompt.classList.add('hidden');
+      if (regFields) regFields.classList.add('hidden');
     } else if (role === 'Doctor') {
       if (titleEl) titleEl.textContent = "Doctor Consultation Suite";
       if (subtitleEl) subtitleEl.textContent = "Clinical consultations, assigned queues & doctor availability";
-      if (btnLoginText) btnLoginText.textContent = "Sign In as Doctor";
-      if (regPrompt) regPrompt.classList.add('hidden');
+      if (regFields) regFields.classList.add('hidden');
     }
 
-    // Always ensure login form is shown when switching roles
-    this.showLoginForm();
     this.clearAuthError();
     if (window.lucide) lucide.createIcons();
   }
 
-  showLoginForm() {
-    const loginForm = document.getElementById('authLoginForm');
-    const regForm = document.getElementById('authRegisterForm');
-    if (loginForm) loginForm.classList.remove('hidden');
-    if (regForm) regForm.classList.add('hidden');
+  selectAuthMethod(method) {
+    this.selectedAuthMethod = method; // 'email' or 'phone'
+
+    const emailBtn = document.getElementById('authMethodBtn-email');
+    const phoneBtn = document.getElementById('authMethodBtn-phone');
+    const emailGroup = document.getElementById('emailInputGroup');
+    const phoneGroup = document.getElementById('phoneInputGroup');
+
+    if (method === 'email') {
+      if (emailBtn) {
+        emailBtn.className = "flex-1 py-2 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 bg-white text-royal-700 shadow-sm border border-slate-200";
+      }
+      if (phoneBtn) {
+        phoneBtn.className = "flex-1 py-2 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 text-slate-600 hover:text-slate-900";
+      }
+      if (emailGroup) emailGroup.classList.remove('hidden');
+      if (phoneGroup) phoneGroup.classList.add('hidden');
+    } else {
+      if (phoneBtn) {
+        phoneBtn.className = "flex-1 py-2 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 bg-white text-royal-700 shadow-sm border border-slate-200";
+      }
+      if (emailBtn) {
+        emailBtn.className = "flex-1 py-2 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 text-slate-600 hover:text-slate-900";
+      }
+      if (emailGroup) emailGroup.classList.add('hidden');
+      if (phoneGroup) phoneGroup.classList.remove('hidden');
+    }
+
     this.clearAuthError();
     if (window.lucide) lucide.createIcons();
   }
 
-  showRegisterForm() {
-    if (this.selectedAuthRole !== 'Patient') {
-      this.selectAuthRole('Patient');
-    }
-    const loginForm = document.getElementById('authLoginForm');
-    const regForm = document.getElementById('authRegisterForm');
-    if (loginForm) loginForm.classList.add('hidden');
-    if (regForm) regForm.classList.remove('hidden');
-    this.clearAuthError();
-    if (window.lucide) lucide.createIcons();
+  setupOtpInputListeners() {
+    const boxes = document.querySelectorAll('.otp-box');
+    if (!boxes || boxes.length === 0) return;
+
+    boxes.forEach((box, idx) => {
+      // Automatic focus advance
+      box.addEventListener('input', (e) => {
+        const val = e.target.value.replace(/[^0-9]/g, '');
+        e.target.value = val ? val.slice(-1) : '';
+
+        if (e.target.value && idx < boxes.length - 1) {
+          boxes[idx + 1].focus();
+        }
+        this.syncOtpInputValue();
+      });
+
+      // Backspace handling
+      box.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !box.value && idx > 0) {
+          boxes[idx - 1].focus();
+        } else if (e.key === 'Enter') {
+          this.verifyOtp();
+        }
+      });
+
+      // Full Paste handling (e.g. user copies '548291')
+      box.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const pasted = (e.clipboardData || window.clipboardData).getData('text');
+        const digits = pasted.replace(/[^0-9]/g, '').slice(0, 6);
+        if (digits) {
+          digits.split('').forEach((d, i) => {
+            if (boxes[i]) boxes[i].value = d;
+          });
+          const focusIdx = Math.min(digits.length, boxes.length - 1);
+          boxes[focusIdx].focus();
+          this.syncOtpInputValue();
+
+          if (digits.length === 6) {
+            // Auto-verify if all 6 digits pasted
+            setTimeout(() => this.verifyOtp(), 250);
+          }
+        }
+      });
+    });
   }
 
-  togglePasswordVisibility(inputId, btnEl) {
-    const input = document.getElementById(inputId);
-    if (!input) return;
-    const isPassword = input.type === 'password';
-    input.type = isPassword ? 'text' : 'password';
+  syncOtpInputValue() {
+    const boxes = document.querySelectorAll('.otp-box');
+    let code = '';
+    boxes.forEach(b => code += (b.value || ''));
+    const hiddenInput = document.getElementById('authOtpCode');
+    if (hiddenInput) hiddenInput.value = code;
+    return code;
+  }
 
-    if (btnEl) {
-      btnEl.innerHTML = `<i data-lucide="${isPassword ? 'eye-off' : 'eye'}" class="w-4 h-4"></i>`;
-      if (window.lucide) lucide.createIcons();
-    }
+  clearOtpInputs() {
+    const boxes = document.querySelectorAll('.otp-box');
+    boxes.forEach(b => b.value = '');
+    const hiddenInput = document.getElementById('authOtpCode');
+    if (hiddenInput) hiddenInput.value = '';
+    if (boxes[0]) boxes[0].focus();
   }
 
   clearAuthError() {
@@ -177,329 +234,220 @@ class CarePulseClient {
     this.showToast(message, "danger");
   }
 
-  async handleLogin(e) {
-    e.preventDefault();
+  async requestOtp() {
     this.clearAuthError();
+    const btn = document.getElementById('btnRequestOtp');
+    const method = this.selectedAuthMethod || 'email';
+    let identifier = '';
 
-    const identifier = document.getElementById('loginIdentifier')?.value.trim();
-    const password = document.getElementById('loginPassword')?.value;
-    const rememberMe = document.getElementById('loginRememberMe')?.checked;
-    const btn = document.getElementById('btnLogin');
-
-    if (!identifier || !password) {
-      this.showAuthError("Please enter both email/phone and password.");
-      return;
+    if (method === 'email') {
+      identifier = document.getElementById('authEmailInput')?.value.trim();
+      if (!identifier) {
+        this.showAuthError("Please enter your email address.");
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier)) {
+        this.showAuthError("Please enter a valid email address (e.g. name@example.com).");
+        return;
+      }
+    } else {
+      const code = document.getElementById('authCountryCode')?.value || '+91';
+      const rawPhone = document.getElementById('authPhoneInput')?.value.trim();
+      if (!rawPhone) {
+        this.showAuthError("Please enter your mobile phone number.");
+        return;
+      }
+      const digits = rawPhone.replace(/[^0-9]/g, '');
+      if (digits.length < 7 || digits.length > 15) {
+        this.showAuthError("Please enter a valid mobile phone number.");
+        return;
+      }
+      identifier = `${code}${digits.length === 10 ? digits : digits.slice(-10)}`;
     }
+
+    const regName = document.getElementById('regPatientName')?.value.trim();
+    const regAge = document.getElementById('regPatientAge')?.value;
+    const regGender = document.getElementById('regPatientGender')?.value;
+
+    const payload = {
+      identifier,
+      targetRole: this.selectedAuthRole,
+      channel: method,
+      profileData: this.selectedAuthRole === 'Patient' ? {
+        name: regName,
+        age: regAge,
+        gender: regGender
+      } : null
+    };
 
     if (btn) {
       btn.disabled = true;
-      btn.innerHTML = `<span class="inline-block animate-spin mr-2">&#9696;</span> Authenticating...`;
+      btn.innerHTML = `<span class="inline-block animate-spin mr-2">&#9696;</span> Dispatching ${method === 'email' ? 'Email' : 'SMS'} OTP...`;
     }
 
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch('/api/auth/request-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          identifier,
-          password,
-          targetRole: this.selectedAuthRole
-        })
+        body: JSON.stringify(payload)
       });
-
       const data = await res.json();
 
       if (!res.ok) {
-        this.showAuthError(data.error || "Login failed. Please check your credentials.");
+        this.showAuthError(data.error || "Failed to dispatch OTP code.");
         return;
       }
 
-      this.token = data.token;
-      this.user = data.user;
+      this.currentAuthIdentifier = identifier;
+      this.currentAuthChannel = method;
 
-      if (rememberMe) {
-        localStorage.setItem('carepulse_remember', 'true');
-      } else {
-        localStorage.removeItem('carepulse_remember');
-      }
+      // Switch to Step 2
+      document.getElementById('authStep1')?.classList.add('hidden');
+      document.getElementById('authStep2')?.classList.remove('hidden');
 
-      localStorage.setItem('carepulse_jwt', data.token);
-      localStorage.setItem('carepulse_user', JSON.stringify(data.user));
+      const targetDisplay = document.getElementById('otpTargetDisplay');
+      if (targetDisplay) targetDisplay.textContent = identifier;
 
-      this.showToast(`Signed in successfully! Welcome, ${data.user.name}`, "success");
-      this.renderAuthHeader();
-      this.routeToRoleDashboard();
+      const channelDisplay = document.getElementById('otpChannelDisplay');
+      if (channelDisplay) channelDisplay.textContent = method === 'email' ? 'Email' : 'SMS';
+
+      this.clearOtpInputs();
+      this.setupOtpInputListeners();
+      this.startOtpTimer(data.expiresInSeconds || 300);
+
+      this.showToast(data.message || "OTP code dispatched successfully.", "success");
     } catch (err) {
-      this.showAuthError("Unable to connect to authentication server. Please check your network.");
+      this.showAuthError("Connection error. Could not contact the authentication server.");
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.innerHTML = `<i data-lucide="log-in" class="w-4 h-4"></i> <span id="btnLoginText">${document.getElementById('btnLoginText')?.textContent || 'Sign In'}</span>`;
+        btn.innerHTML = `<i data-lucide="send" class="w-4 h-4"></i> <span id="btnRequestOtpText">Send Secure OTP</span>`;
         if (window.lucide) lucide.createIcons();
       }
     }
   }
 
-  async handleRegister(e) {
-    e.preventDefault();
-    this.clearAuthError();
+  startOtpTimer(seconds) {
+    if (this.otpTimerInterval) clearInterval(this.otpTimerInterval);
+    let left = seconds;
+    const timerEl = document.getElementById('otpTimerDisplay');
+    const resendBtn = document.getElementById('btnResendOtp');
 
-    const name = document.getElementById('regName')?.value.trim();
-    const identifier = document.getElementById('regIdentifier')?.value.trim();
-    const age = document.getElementById('regAge')?.value;
-    const gender = document.getElementById('regGender')?.value;
-    const password = document.getElementById('regPassword')?.value;
-    const confirmPassword = document.getElementById('regConfirmPassword')?.value;
-    const btn = document.getElementById('btnRegister');
-
-    if (!name || !identifier || !password) {
-      this.showAuthError("Please fill in all required fields.");
-      return;
+    if (resendBtn) {
+      resendBtn.disabled = true;
+      resendBtn.classList.add('opacity-40', 'cursor-not-allowed');
     }
 
-    // Email or 10-digit phone validation
-    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
-    const isPhone = /^[0-9]{10}$/.test(identifier) || /^\+[0-9]{10,13}$/.test(identifier);
+    const cooldownPeriod = 60; // 60s resend cooldown
+    let cooldownLeft = cooldownPeriod;
 
-    if (!isEmail && !isPhone) {
-      this.showAuthError("Please enter a valid email address or 10-digit mobile number.");
-      return;
-    }
+    this.otpTimerInterval = setInterval(() => {
+      left--;
+      cooldownLeft--;
 
-    if (password !== confirmPassword) {
-      this.showAuthError("Passwords do not match. Please verify.");
-      return;
-    }
-
-    // Strong password check: 8+ chars, 1 uppercase, 1 lowercase, 1 number
-    const strongRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-    if (!strongRegex.test(password)) {
-      this.showAuthError("Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number.");
-      return;
-    }
-
-    if (btn) {
-      btn.disabled = true;
-      btn.innerHTML = `<span class="inline-block animate-spin mr-2">&#9696;</span> Creating Account...`;
-    }
-
-    try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          identifier,
-          age,
-          gender,
-          password,
-          confirmPassword
-        })
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        this.showAuthError(data.error || "Registration failed.");
-        return;
+      const m = Math.floor(left / 60);
+      const s = left % 60;
+      if (timerEl) {
+        timerEl.textContent = `Expires in: ${m}m ${s < 10 ? '0' : ''}${s}s`;
       }
 
-      this.token = data.token;
-      this.user = data.user;
-      localStorage.setItem('carepulse_jwt', data.token);
-      localStorage.setItem('carepulse_user', JSON.stringify(data.user));
-
-      this.showToast(`Registration complete! Welcome to CarePulse, ${data.user.name}.`, "success");
-      this.renderAuthHeader();
-      this.routeToRoleDashboard();
-    } catch (err) {
-      this.showAuthError("Connection error during registration.");
-    } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = `<i data-lucide="user-plus" class="w-4 h-4"></i> <span data-i18n="registerAndEnter">Register & Enter Portal</span>`;
-        if (window.lucide) lucide.createIcons();
+      if (cooldownLeft <= 0 && resendBtn && resendBtn.disabled && left > 0) {
+        resendBtn.disabled = false;
+        resendBtn.classList.remove('opacity-40', 'cursor-not-allowed');
+        resendBtn.textContent = "Resend OTP";
+      } else if (cooldownLeft > 0 && resendBtn && resendBtn.disabled) {
+        resendBtn.textContent = `Resend in ${cooldownLeft}s`;
       }
-    }
+
+      if (left <= 0) {
+        clearInterval(this.otpTimerInterval);
+        if (timerEl) timerEl.textContent = "OTP has expired. Please request a new code.";
+        if (resendBtn) {
+          resendBtn.disabled = false;
+          resendBtn.classList.remove('opacity-40', 'cursor-not-allowed');
+          resendBtn.textContent = "Resend OTP";
+        }
+      }
+    }, 1000);
   }
 
-  // ==========================================================================
-  // FORGOT & RESET PASSWORD WORKFLOW
-  // ==========================================================================
-  openForgotPasswordModal() {
-    const modal = document.getElementById('forgotPasswordModal');
-    const step1 = document.getElementById('forgotStep1');
-    const step2 = document.getElementById('forgotStep2');
-    const errorBanner = document.getElementById('forgotErrorBanner');
-    const input = document.getElementById('forgotIdentifier');
-
-    if (step1) step1.classList.remove('hidden');
-    if (step2) step2.classList.add('hidden');
-    if (errorBanner) {
-      errorBanner.className = 'hidden';
-      errorBanner.textContent = '';
-    }
-
-    const currentLoginId = document.getElementById('loginIdentifier')?.value.trim();
-    if (input && currentLoginId) {
-      input.value = currentLoginId;
-    }
-
-    if (modal) modal.classList.remove('hidden');
+  backToStep1() {
+    if (this.otpTimerInterval) clearInterval(this.otpTimerInterval);
+    document.getElementById('authStep2')?.classList.add('hidden');
+    document.getElementById('authStep1')?.classList.remove('hidden');
+    this.clearAuthError();
     if (window.lucide) lucide.createIcons();
   }
 
-  backToForgotStep1() {
-    const step1 = document.getElementById('forgotStep1');
-    const step2 = document.getElementById('forgotStep2');
-    if (step1) step1.classList.remove('hidden');
-    if (step2) step2.classList.add('hidden');
-  }
-
-  async requestPasswordReset() {
-    const identifier = document.getElementById('forgotIdentifier')?.value.trim();
-    const btn = document.getElementById('btnRequestReset');
-    const errorBanner = document.getElementById('forgotErrorBanner');
+  async verifyOtp() {
+    this.clearAuthError();
+    const identifier = this.currentAuthIdentifier;
+    const otpCode = this.syncOtpInputValue();
+    const btn = document.getElementById('btnVerifyOtp');
 
     if (!identifier) {
-      if (errorBanner) {
-        errorBanner.className = "p-3 rounded-xl text-xs bg-red-100 text-red-800 border border-red-300 block mb-3";
-        errorBanner.textContent = "Please enter your registered email or phone number.";
-      }
+      this.showAuthError("Missing authentication session. Please start over.");
+      this.backToStep1();
       return;
     }
+
+    if (!otpCode || otpCode.length < 6) {
+      this.showAuthError("Please enter all 6 digits of your OTP code.");
+      return;
+    }
+
+    const regName = document.getElementById('regPatientName')?.value.trim();
+    const regAge = document.getElementById('regPatientAge')?.value;
+    const regGender = document.getElementById('regPatientGender')?.value;
 
     if (btn) {
       btn.disabled = true;
-      btn.innerHTML = `<span class="inline-block animate-spin mr-2">&#9696;</span> Requesting...`;
+      btn.innerHTML = `<span class="inline-block animate-spin mr-2">&#9696;</span> Verifying Code...`;
     }
 
     try {
-      const res = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier })
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        if (errorBanner) {
-          errorBanner.className = "p-3 rounded-xl text-xs bg-red-100 text-red-800 border border-red-300 block mb-3";
-          errorBanner.textContent = data.error || "Password reset request failed.";
-        }
-        return;
-      }
-
-      // Transition to Step 2
-      document.getElementById('forgotStep1')?.classList.add('hidden');
-      document.getElementById('forgotStep2')?.classList.remove('hidden');
-      const targetDisplay = document.getElementById('forgotTargetDisplay');
-      if (targetDisplay) targetDisplay.textContent = identifier;
-
-      // In testing environment, automatically fill or hint the reset code
-      if (data.resetCode) {
-        const codeInput = document.getElementById('forgotResetCode');
-        if (codeInput) codeInput.value = data.resetCode;
-      }
-
-      if (errorBanner) {
-        errorBanner.className = "p-3 rounded-xl text-xs bg-emerald-100 text-emerald-800 border border-emerald-300 block mb-3";
-        errorBanner.textContent = `${data.message} ${data.resetCode ? `(Demonstration Code: ${data.resetCode})` : ''}`;
-      }
-
-      this.showToast("Reset verification code generated.", "success");
-    } catch (e) {
-      if (errorBanner) {
-        errorBanner.className = "p-3 rounded-xl text-xs bg-red-100 text-red-800 border border-red-300 block mb-3";
-        errorBanner.textContent = "Server connection error.";
-      }
-    } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = "Request Reset Code";
-      }
-    }
-  }
-
-  async submitPasswordReset() {
-    const identifier = document.getElementById('forgotIdentifier')?.value.trim();
-    const resetCode = document.getElementById('forgotResetCode')?.value.trim();
-    const newPassword = document.getElementById('forgotNewPassword')?.value;
-    const confirmPassword = document.getElementById('forgotConfirmPassword')?.value;
-    const btn = document.getElementById('btnSubmitReset');
-    const errorBanner = document.getElementById('forgotErrorBanner');
-
-    if (!resetCode || !newPassword) {
-      if (errorBanner) {
-        errorBanner.className = "p-3 rounded-xl text-xs bg-red-100 text-red-800 border border-red-300 block mb-3";
-        errorBanner.textContent = "Please fill in all fields.";
-      }
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      if (errorBanner) {
-        errorBanner.className = "p-3 rounded-xl text-xs bg-red-100 text-red-800 border border-red-300 block mb-3";
-        errorBanner.textContent = "Passwords do not match.";
-      }
-      return;
-    }
-
-    const strongRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-    if (!strongRegex.test(newPassword)) {
-      if (errorBanner) {
-        errorBanner.className = "p-3 rounded-xl text-xs bg-red-100 text-red-800 border border-red-300 block mb-3";
-        errorBanner.textContent = "Password must have at least 8 characters with 1 uppercase, 1 lowercase, and 1 number.";
-      }
-      return;
-    }
-
-    if (btn) {
-      btn.disabled = true;
-      btn.innerHTML = `<span class="inline-block animate-spin mr-2">&#9696;</span> Updating...`;
-    }
-
-    try {
-      const res = await fetch('/api/auth/reset-password', {
+      const res = await fetch('/api/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           identifier,
-          resetCode,
-          newPassword,
-          confirmPassword
+          otpCode,
+          targetRole: this.selectedAuthRole,
+          registerDetails: {
+            name: regName,
+            age: regAge,
+            gender: regGender
+          }
         })
       });
+
       const data = await res.json();
 
       if (!res.ok) {
-        if (errorBanner) {
-          errorBanner.className = "p-3 rounded-xl text-xs bg-red-100 text-red-800 border border-red-300 block mb-3";
-          errorBanner.textContent = data.error || "Password reset failed.";
+        this.showAuthError(data.error || "OTP verification failed. Please check your code.");
+        if (data.attemptsLeft !== undefined && data.attemptsLeft !== null) {
+          this.showToast(`Incorrect OTP. ${data.attemptsLeft} attempts remaining.`, "danger");
         }
         return;
       }
 
-      this.closeModal('forgotPasswordModal');
-      this.showToast("Password updated successfully! You can now log in.", "success");
+      if (this.otpTimerInterval) clearInterval(this.otpTimerInterval);
 
-      // Pre-fill login form
-      const loginId = document.getElementById('loginIdentifier');
-      const loginPass = document.getElementById('loginPassword');
-      if (loginId) loginId.value = identifier;
-      if (loginPass) {
-        loginPass.value = newPassword;
-        loginPass.focus();
-      }
-    } catch (e) {
-      if (errorBanner) {
-        errorBanner.className = "p-3 rounded-xl text-xs bg-red-100 text-red-800 border border-red-300 block mb-3";
-        errorBanner.textContent = "Server connection error.";
-      }
+      this.token = data.token;
+      this.user = data.user;
+      localStorage.setItem('carepulse_jwt', data.token);
+      localStorage.setItem('carepulse_user', JSON.stringify(data.user));
+
+      this.showToast(`Verified! Welcome to CarePulse, ${data.user.name} (${data.user.role}).`, "success");
+      this.renderAuthHeader();
+      this.routeToRoleDashboard();
+    } catch (err) {
+      this.showAuthError("Connection error while verifying OTP code.");
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.innerHTML = "Update Password";
+        btn.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4"></i> <span data-i18n="verifyOtp">Verify OTP & Enter</span>`;
+        if (window.lucide) lucide.createIcons();
       }
     }
   }
@@ -1666,18 +1614,22 @@ Track live queue at: carepulse.org
         
         <div class="space-y-4 text-xs">
           <div class="p-4 bg-cream-50 rounded-2xl border border-cream-200 space-y-2">
-            <strong class="text-slate-800 block text-sm">Secure Authentication Engine</strong>
+            <strong class="text-slate-800 block text-sm">Real OTP Authentication Engine</strong>
             <div class="flex justify-between">
-              <span>Authentication Mode:</span>
-              <strong class="text-emerald-600 font-mono-code">Password-Based (Bcrypt)</strong>
+              <span>Authentication Architecture:</span>
+              <strong class="text-royal-600 font-mono-code">Passwordless Real OTP</strong>
             </div>
             <div class="flex justify-between">
-              <span>Portals Supported:</span>
-              <strong class="text-royal-600 font-mono-code">Patient, Staff, Doctor</strong>
+              <span>Email OTP Provider (SMTP):</span>
+              <strong class="${status.otpStatus?.emailOtpConfigured ? 'text-emerald-600' : 'text-amber-600'} font-mono-code">${status.otpStatus?.emailOtpConfigured ? 'Active (' + status.otpStatus.activeEmailProvider + ')' : 'Needs SMTP credentials in .env'}</strong>
             </div>
             <div class="flex justify-between">
-              <span>Password Security:</span>
-              <strong class="text-slate-700 font-mono-code">8+ chars, upper/lower/number</strong>
+              <span>Phone SMS OTP Provider:</span>
+              <strong class="${status.otpStatus?.phoneOtpConfigured ? 'text-emerald-600' : 'text-amber-600'} font-mono-code">${status.otpStatus?.phoneOtpConfigured ? 'Active (' + status.otpStatus.activePhoneProvider + ')' : 'Needs Twilio / Fast2SMS credentials in .env'}</strong>
+            </div>
+            <div class="flex justify-between">
+              <span>Portals Enforced:</span>
+              <strong class="text-slate-700 font-mono-code">Patient, Staff, Doctor</strong>
             </div>
           </div>
 

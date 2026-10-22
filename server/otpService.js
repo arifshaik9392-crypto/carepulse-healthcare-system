@@ -46,11 +46,12 @@ class OtpService {
       this.mailTransporter = null;
     }
 
-    // 2. Phone / SMS Providers: Twilio or Fast2SMS or Firebase Auth
+    // 2. Phone / SMS Providers: Twilio (Messages or Verify Service) or Fast2SMS or Firebase Auth
     this.twilioSid = process.env.TWILIO_ACCOUNT_SID || null;
     this.twilioToken = process.env.TWILIO_AUTH_TOKEN || null;
     this.twilioPhone = process.env.TWILIO_PHONE_NUMBER || null;
-    this.twilioConfigured = !!(this.twilioSid && this.twilioToken && this.twilioPhone);
+    this.twilioVerifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID || null;
+    this.twilioConfigured = !!(this.twilioSid && this.twilioToken && (this.twilioPhone || this.twilioVerifyServiceSid));
 
     this.fast2smsKey = process.env.FAST2SMS_KEY || null;
     this.fast2smsConfigured = !!this.fast2smsKey;
@@ -66,11 +67,14 @@ class OtpService {
       emailOtpConfigured: this.emailConfigured,
       phoneOtpConfigured: this.phoneConfigured,
       activeEmailProvider: this.emailConfigured ? `SMTP (${this.smtpHost})` : null,
-      activePhoneProvider: this.twilioConfigured ? 'Twilio SMS' : (this.fast2smsConfigured ? 'Fast2SMS' : (this.firebaseAuthKey ? 'Firebase Auth' : null)),
+      activePhoneProvider: this.twilioVerifyServiceSid ? 'Twilio Verify' : (this.twilioPhone ? 'Twilio SMS' : (this.fast2smsConfigured ? 'Fast2SMS' : (this.firebaseAuthKey ? 'Firebase Auth' : null))),
       requiresEmailCredentials: !this.emailConfigured,
       requiresPhoneCredentials: !this.phoneConfigured,
       requiredEmailEnv: ["SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASS", "SMTP_FROM"],
-      requiredPhoneEnv: ["TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER (or FAST2SMS_KEY or FIREBASE_AUTH_KEY)"]
+      requiredPhoneEnv: [
+        "TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER (or TWILIO_VERIFY_SERVICE_SID)",
+        "or FAST2SMS_KEY"
+      ]
     };
   }
 
@@ -113,8 +117,43 @@ class OtpService {
   async dispatchSmsOtp(phone, code) {
     const formattedPhone = phone.startsWith("+") ? phone : (phone.length === 10 ? `+91${phone}` : `+${phone}`);
 
-    // Option A: Twilio REST API
-    if (this.twilioConfigured) {
+    // Option A1: Twilio Verify Service (If TWILIO_VERIFY_SERVICE_SID is set)
+    if (this.twilioSid && this.twilioToken && this.twilioVerifyServiceSid) {
+      const auth = Buffer.from(`${this.twilioSid}:${this.twilioToken}`).toString('base64');
+      const postData = new URLSearchParams({
+        To: formattedPhone,
+        Channel: 'sms'
+      }).toString();
+
+      return new Promise((resolve, reject) => {
+        const req = https.request({
+          hostname: 'verify.twilio.com',
+          path: `/v2/Services/${this.twilioVerifyServiceSid}/Verifications`,
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${auth}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Length': Buffer.byteLength(postData)
+          }
+        }, (res) => {
+          let body = '';
+          res.on('data', chunk => body += chunk);
+          res.on('end', () => {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              resolve(JSON.parse(body));
+            } else {
+              reject(new Error(`Twilio Verify failed with HTTP ${res.statusCode}: ${body}`));
+            }
+          });
+        });
+        req.on('error', reject);
+        req.write(postData);
+        req.end();
+      });
+    }
+
+    // Option A2: Twilio standard Programmable Messaging SMS API
+    if (this.twilioSid && this.twilioToken && this.twilioPhone) {
       const auth = Buffer.from(`${this.twilioSid}:${this.twilioToken}`).toString('base64');
       const postData = new URLSearchParams({
         To: formattedPhone,
