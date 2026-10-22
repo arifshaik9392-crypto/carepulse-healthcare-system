@@ -188,17 +188,35 @@ class OtpService {
       });
     }
 
-    // Option B: Fast2SMS API
+    // Option B: Fast2SMS API (for Indian mobile numbers)
     if (this.fast2smsConfigured) {
       const clean10Digit = phone.replace(/[^0-9]/g, '').slice(-10);
-      const postData = JSON.stringify({
-        route: "v3",
-        sender_id: "TXTIND",
-        message: `Your CarePulse verification code is ${code}. Valid for 5 minutes.`,
-        language: "english",
-        flash: 0,
-        numbers: clean10Digit
-      });
+      if (clean10Digit.length !== 10) {
+        throw new Error("Fast2SMS requires a valid 10-digit Indian mobile number.");
+      }
+
+      // Fast2SMS bulkV2 API supports 'otp' route (for numeric OTPs)
+      // or 'dlt' route if FAST2SMS_DLT_SENDER_ID and FAST2SMS_DLT_TEMPLATE_ID are configured
+      const dltSenderId = process.env.FAST2SMS_DLT_SENDER_ID;
+      const dltMessageId = process.env.FAST2SMS_DLT_MESSAGE_ID;
+
+      let postData;
+      if (dltSenderId && dltMessageId) {
+        postData = JSON.stringify({
+          route: "dlt",
+          sender_id: dltSenderId,
+          message: dltMessageId,
+          variables_values: code,
+          numbers: clean10Digit
+        });
+      } else {
+        // Fast2SMS Quick OTP Route (Standard numerical OTP delivery)
+        postData = JSON.stringify({
+          route: "otp",
+          variables_values: code,
+          numbers: clean10Digit
+        });
+      }
 
       return new Promise((resolve, reject) => {
         const req = https.request({
@@ -208,26 +226,42 @@ class OtpService {
           headers: {
             'authorization': this.fast2smsKey,
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
             'Content-Length': Buffer.byteLength(postData)
           }
         }, (res) => {
           let body = '';
           res.on('data', chunk => body += chunk);
           res.on('end', () => {
-            if (res.statusCode >= 200 && res.statusCode < 300) {
-              resolve(JSON.parse(body));
-            } else {
-              reject(new Error(`Fast2SMS failed with HTTP ${res.statusCode}: ${body}`));
+            try {
+              const parsed = JSON.parse(body);
+              // Fast2SMS returns { return: true, request_id: '...', message: [...] } on success
+              if (parsed.return === true || (res.statusCode >= 200 && res.statusCode < 300 && !parsed.status_code)) {
+                resolve(parsed);
+              } else {
+                const errorMsg = Array.isArray(parsed.message) 
+                  ? parsed.message.join(', ') 
+                  : (parsed.message || `Fast2SMS error code ${parsed.status_code || res.statusCode}`);
+                reject(new Error(`Fast2SMS rejected request: ${errorMsg}`));
+              }
+            } catch (err) {
+              if (res.statusCode >= 200 && res.statusCode < 300) {
+                resolve({ raw: body });
+              } else {
+                reject(new Error(`Fast2SMS failed with HTTP ${res.statusCode}: ${body}`));
+              }
             }
           });
         });
-        req.on('error', reject);
+        req.on('error', (err) => {
+          reject(new Error(`Fast2SMS connection error: ${err.message}`));
+        });
         req.write(postData);
         req.end();
       });
     }
 
-    throw new Error("SMS provider is not configured. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER (or FAST2SMS_KEY) in .env to deliver real SMS OTPs.");
+    throw new Error("SMS provider is not configured. Set FAST2SMS_KEY in .env (or TWILIO credentials) to deliver real SMS OTPs.");
   }
 
   async requestOtp(identifier, isPhone, role, profileData = null) {
